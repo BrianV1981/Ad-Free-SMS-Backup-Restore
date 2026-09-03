@@ -1,5 +1,9 @@
 package com.example.smsbackuprestore.ui.screens
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -9,15 +13,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.smsbackuprestore.ui.viewmodel.BackupState
 import com.example.smsbackuprestore.ui.viewmodel.BackupViewModel
@@ -30,6 +33,23 @@ fun DashboardScreen(
 ) {
     val backupState by viewModel.backupState.collectAsState()
     val context = LocalContext.current
+    
+    val requiredPermissions = arrayOf(
+        Manifest.permission.READ_SMS,
+        Manifest.permission.READ_CALL_LOG,
+        Manifest.permission.READ_CONTACTS
+    )
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.values.all { it }
+        if (allGranted) {
+            viewModel.startBackup(context.cacheDir)
+        } else {
+            // Handle denied permission visually (TODO: show snackbar)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -75,8 +95,14 @@ fun DashboardScreen(
             // Primary Actions
             FilledTonalButton(
                 onClick = { 
-                    // In a real app we'd prompt for directory, for now just use cache dir
-                    viewModel.startBackup(context.cacheDir) 
+                    val hasPermissions = requiredPermissions.all {
+                        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+                    }
+                    if (hasPermissions) {
+                        viewModel.startBackup(context.cacheDir) 
+                    } else {
+                        permissionLauncher.launch(requiredPermissions)
+                    }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 enabled = backupState !is BackupState.BackingUp
