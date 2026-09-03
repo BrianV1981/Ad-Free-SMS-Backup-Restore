@@ -6,7 +6,8 @@ import kotlinx.coroutines.flow.merge
 
 class ExtractionRepository(
     private val smsEngine: SmsExtractionEngine,
-    private val mmsEngine: MmsExtractionEngine
+    private val mmsEngine: MmsExtractionEngine,
+    private val callLogEngine: CallLogExtractionEngine
 ) {
 
     /**
@@ -17,4 +18,9 @@ class ExtractionRepository(
     fun extractAllMessages(): Flow<Message> {
         return merge(smsEngine.extractSms(), mmsEngine.extractMms())
     }
+
+    /**
+     * Returns a flow of all call log entries.
+     */
+    fun extractCallLogs() = callLogEngine.extractCallLogs()
 }
