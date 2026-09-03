@@ -11,3 +11,8 @@
 - Documented the memory-efficient streaming pipeline combining SQLite Cursors, Kotlin Flow, and ZipOutputStream.
 - Added [Data Extraction & Backup Pipeline](pages/data_extraction_architecture.md).
 - Updated index.md.
+
+## [2026-09-03] ingest | RCS Limitations & Architecture
+- Researched native RCS extraction and verified it is blocked by Google's private `bugle_db` implementation.
+- Added [RCS Limitations & Storage](pages/rcs_limitations.md).
+- Updated index.md.
