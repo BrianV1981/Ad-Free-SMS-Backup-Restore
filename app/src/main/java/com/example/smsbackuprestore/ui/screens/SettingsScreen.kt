@@ -29,7 +29,7 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
     
     var driveSyncEnabled by remember { mutableStateOf(GoogleSignIn.getLastSignedInAccount(context) != null) }
     var encryptionEnabled by remember { mutableStateOf(false) }
-    var nestInFolderEnabled by remember { mutableStateOf(prefs.getBoolean("nest_in_folder", false)) }
+    var nestInFolderEnabled by remember { mutableStateOf(prefs.getBoolean("nest_in_folder", true)) }
 
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()

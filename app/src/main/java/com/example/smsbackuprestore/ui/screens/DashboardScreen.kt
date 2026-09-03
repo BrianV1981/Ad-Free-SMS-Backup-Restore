@@ -9,6 +9,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -113,7 +114,7 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(16.dp))
             
             OutlinedButton(
-                onClick = { /* TODO: Restore */ },
+                onClick = { viewModel.fetchRestoreOptions() },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 enabled = backupState !is BackupState.BackingUp
             ) {
@@ -121,6 +122,58 @@ fun DashboardScreen(
             }
             
             Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+    
+    val restoreState by viewModel.restoreState.collectAsState()
+    
+    if (restoreState !is com.example.smsbackuprestore.ui.viewmodel.RestoreState.Idle) {
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.resetRestoreState() }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("Restore Backup", style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                when (restoreState) {
+                    is com.example.smsbackuprestore.ui.viewmodel.RestoreState.Loading -> {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Fetching backup history from Google Drive...")
+                    }
+                    is com.example.smsbackuprestore.ui.viewmodel.RestoreState.Error -> {
+                        val msg = (restoreState as com.example.smsbackuprestore.ui.viewmodel.RestoreState.Error).message
+                        Text(msg, color = MaterialTheme.colorScheme.error)
+                    }
+                    is com.example.smsbackuprestore.ui.viewmodel.RestoreState.Options -> {
+                        val manifest = (restoreState as com.example.smsbackuprestore.ui.viewmodel.RestoreState.Options).manifest
+                        androidx.compose.foundation.lazy.LazyColumn {
+                            items(manifest.entries.size) { index ->
+                                // Reverse order for newest first
+                                val entry = manifest.entries.reversed()[index]
+                                val dateStr = java.text.SimpleDateFormat("MMM dd, yyyy - hh:mm a", java.util.Locale.getDefault()).format(java.util.Date(entry.date))
+                                
+                                ListItem(
+                                    headlineContent = { Text(dateStr) },
+                                    supportingContent = { Text("${entry.messageCount} messages") },
+                                    modifier = Modifier.clickable {
+                                        // TODO: Actual restore execution (Issue #15)
+                                    }
+                                )
+                                HorizontalDivider()
+                            }
+                        }
+                    }
+                    else -> {}
+                }
+                
+                Spacer(modifier = Modifier.height(32.dp))
+            }
         }
     }
 }

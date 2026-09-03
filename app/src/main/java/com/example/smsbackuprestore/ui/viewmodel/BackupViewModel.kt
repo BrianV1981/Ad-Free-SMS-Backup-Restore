@@ -54,8 +54,9 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 // Check if Google Drive is enabled (Signed In)
                 val account = com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(getApplication())
                 if (account != null) {
+                    val messageCount = extractionRepository.getTotalMessagesCount()
                     val driveSyncEngine = com.example.smsbackuprestore.data.sync.DriveSyncEngine(getApplication())
-                    val fileId = driveSyncEngine.uploadBackupToDrive(account, backupFile)
+                    val fileId = driveSyncEngine.uploadBackupToDrive(account, backupFile, messageCount)
                     if (fileId == null) {
                         _backupState.value = BackupState.Error("Backup created locally, but Google Drive upload failed.")
                         return@launch
@@ -73,4 +74,38 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
     fun resetState() {
         _backupState.value = BackupState.Idle
     }
+    
+    private val _restoreState = MutableStateFlow<RestoreState>(RestoreState.Idle)
+    val restoreState: StateFlow<RestoreState> = _restoreState.asStateFlow()
+    
+    fun fetchRestoreOptions() {
+        _restoreState.value = RestoreState.Loading
+        viewModelScope.launch {
+            val account = com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(getApplication())
+            if (account == null) {
+                _restoreState.value = RestoreState.Error("Google Drive is not connected. Enable it in settings first.")
+                return@launch
+            }
+            
+            val driveSyncEngine = com.example.smsbackuprestore.data.sync.DriveSyncEngine(getApplication())
+            val manifest = driveSyncEngine.fetchManifest(account)
+            
+            if (manifest == null || manifest.entries.isEmpty()) {
+                _restoreState.value = RestoreState.Error("No backups found in Google Drive.")
+            } else {
+                _restoreState.value = RestoreState.Options(manifest)
+            }
+        }
+    }
+    
+    fun resetRestoreState() {
+        _restoreState.value = RestoreState.Idle
+    }
+}
+
+sealed class RestoreState {
+    object Idle : RestoreState()
+    object Loading : RestoreState()
+    data class Options(val manifest: com.example.smsbackuprestore.data.model.BackupManifest) : RestoreState()
+    data class Error(val message: String) : RestoreState()
 }
