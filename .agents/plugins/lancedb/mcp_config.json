@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "lancedb": {
+      "command": "python",
+      "args": [
+        "mcp_servers/lancedb_mcp.py"
+      ]
+    }
+  }
+}
