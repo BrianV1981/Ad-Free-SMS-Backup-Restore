@@ -35,6 +35,14 @@ android {
     packaging {
       resources {
         excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        excludes += "META-INF/DEPENDENCIES"
+        excludes += "META-INF/LICENSE"
+        excludes += "META-INF/LICENSE.txt"
+        excludes += "META-INF/license.txt"
+        excludes += "META-INF/NOTICE"
+        excludes += "META-INF/NOTICE.txt"
+        excludes += "META-INF/notice.txt"
+        excludes += "META-INF/ASL2.0"
       }
     }
 }
@@ -81,4 +89,11 @@ dependencies {
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+  
+  // Google Drive & Auth
+  implementation(libs.play.services.auth)
+  implementation(libs.google.api.client.android)
+  implementation(libs.google.api.services.drive) {
+      exclude(group = "org.apache.httpcomponents")
+  }
 }
