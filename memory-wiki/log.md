@@ -6,3 +6,8 @@
 - Developer infrastructure and standalone extraction engines integrated into the broader A.I.M. ecosystem will be licensed under **MIT** ("Own your stack").
 - Enabled the official Antigravity Android plugin to inject strict Jetpack Compose/Kotlin guidelines and the `android-cli` skill.
 - Created the initial memory wiki.
+
+## [2026-09-03] ingest | Data Extraction Engine Architecture
+- Documented the memory-efficient streaming pipeline combining SQLite Cursors, Kotlin Flow, and ZipOutputStream.
+- Added [Data Extraction & Backup Pipeline](pages/data_extraction_architecture.md).
+- Updated index.md.
