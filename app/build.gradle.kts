@@ -96,4 +96,7 @@ dependencies {
   implementation(libs.google.api.services.drive) {
       exclude(group = "org.apache.httpcomponents")
   }
+  
+  // ZIP Compression & Encryption
+  implementation(libs.zip4j)
 }

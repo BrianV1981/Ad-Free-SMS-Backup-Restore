@@ -2,28 +2,33 @@ package com.example.smsbackuprestore.data.archiver
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import net.lingala.zip4j.io.outputstream.ZipOutputStream
+import net.lingala.zip4j.model.ZipParameters
+import net.lingala.zip4j.model.enums.AesKeyStrength
+import net.lingala.zip4j.model.enums.CompressionMethod
+import net.lingala.zip4j.model.enums.EncryptionMethod
 import java.io.OutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipOutputStream
 
 class BackupArchiver {
 
     /**
      * Initializes a zip stream and executes the block, providing the ZipOutputStream.
-     * This is designed to stream data directly into the zip file (e.g. via XML serialization)
-     * without writing intermediate massive files to disk.
+     * Uses Zip4j to support optional AES-256 encryption.
      */
     suspend fun createArchive(
         outputStream: OutputStream,
+        password: CharArray? = null,
         block: suspend (ZipOutputStream) -> Unit
     ) {
         withContext(Dispatchers.IO) {
-            ZipOutputStream(outputStream).use { zos ->
-                // Use default DEFLATED compression method
-                zos.setMethod(ZipOutputStream.DEFLATED)
-                // Set compression level to max for best bandwidth savings
-                zos.setLevel(java.util.zip.Deflater.BEST_COMPRESSION)
-                block(zos)
+            val zos = if (password != null) {
+                ZipOutputStream(outputStream, password)
+            } else {
+                ZipOutputStream(outputStream)
+            }
+            
+            zos.use {
+                block(it)
             }
         }
     }
@@ -34,15 +39,22 @@ class BackupArchiver {
     suspend fun writeEntry(
         zos: ZipOutputStream,
         filename: String,
+        isEncrypted: Boolean = false,
         writeAction: suspend (OutputStream) -> Unit
     ) {
         withContext(Dispatchers.IO) {
-            val entry = ZipEntry(filename)
-            zos.putNextEntry(entry)
+            val zipParameters = ZipParameters().apply {
+                fileNameInZip = filename
+                compressionMethod = CompressionMethod.DEFLATE
+                if (isEncrypted) {
+                    isEncryptFiles = true
+                    encryptionMethod = EncryptionMethod.AES
+                    aesKeyStrength = AesKeyStrength.KEY_STRENGTH_256
+                }
+            }
             
+            zos.putNextEntry(zipParameters)
             try {
-                // The writeAction is responsible for writing bytes to the stream.
-                // It must NOT close the stream, as that would close the entire ZipOutputStream.
                 writeAction(zos)
             } finally {
                 zos.closeEntry()

@@ -2,10 +2,8 @@ package com.example.smsbackuprestore.data.archiver
 
 import com.example.smsbackuprestore.data.extraction.ExtractionRepository
 import com.example.smsbackuprestore.data.model.CallLogEntry
-import com.example.smsbackuprestore.data.model.Message
-import com.example.smsbackuprestore.data.model.SmsMessage
 import com.example.smsbackuprestore.data.model.MmsMessage
-import kotlinx.coroutines.flow.collect
+import com.example.smsbackuprestore.data.model.SmsMessage
 import java.io.OutputStream
 import java.nio.charset.StandardCharsets
 
@@ -17,12 +15,15 @@ class BackupOrchestrator(
     /**
      * Executes the full backup, extracting SMS, MMS, Call Logs, and Contacts,
      * serializing them to XML/VCard, and compressing them directly into the outputStream.
+     * Optionally encrypts the backup with AES-256 if a password is provided.
      */
-    suspend fun performBackup(outputStream: OutputStream) {
-        archiver.createArchive(outputStream) { zos ->
+    suspend fun performBackup(outputStream: OutputStream, password: CharArray? = null) {
+        archiver.createArchive(outputStream, password) { zos ->
             
+            val isEncrypted = password != null
+
             // 1. Backup SMS & MMS
-            archiver.writeEntry(zos, "messages.xml") { stream ->
+            archiver.writeEntry(zos, "messages.xml", isEncrypted) { stream ->
                 // Write XML Header
                 stream.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<messages>\n".toByteArray(StandardCharsets.UTF_8))
                 
@@ -38,7 +39,7 @@ class BackupOrchestrator(
             }
 
             // 2. Backup Call Logs
-            archiver.writeEntry(zos, "calls.xml") { stream ->
+            archiver.writeEntry(zos, "calls.xml", isEncrypted) { stream ->
                 stream.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<calls>\n".toByteArray(StandardCharsets.UTF_8))
                 
                 extractionRepository.extractCallLogs().collect { call ->
@@ -50,7 +51,7 @@ class BackupOrchestrator(
             }
 
             // 3. Backup Contacts (VCard)
-            archiver.writeEntry(zos, "contacts.vcf") { stream ->
+            archiver.writeEntry(zos, "contacts.vcf", isEncrypted) { stream ->
                 extractionRepository.extractContactsAsVCard().collect { vcard ->
                     stream.write(vcard.toByteArray(StandardCharsets.UTF_8))
                 }
