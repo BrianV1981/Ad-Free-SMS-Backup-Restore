@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.example.smsbackuprestore.theme.SMSBackupRestoreTheme
+import com.example.smsbackuprestore.ui.theme.AdFreeSmsBackupTheme
 
 class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,7 +16,11 @@ class MainActivity : ComponentActivity() {
 
     enableEdgeToEdge()
     setContent {
-      SMSBackupRestoreTheme { Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MainNavigation() } }
+      AdFreeSmsBackupTheme { 
+          Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { 
+              MainNavigation() 
+          } 
+      }
     }
   }
 }
