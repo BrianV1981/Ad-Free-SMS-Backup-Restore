@@ -7,7 +7,8 @@ import kotlinx.coroutines.flow.merge
 class ExtractionRepository(
     private val smsEngine: SmsExtractionEngine,
     private val mmsEngine: MmsExtractionEngine,
-    private val callLogEngine: CallLogExtractionEngine
+    private val callLogEngine: CallLogExtractionEngine,
+    private val contactsEngine: ContactsExtractionEngine
 ) {
 
     /**
@@ -23,4 +24,9 @@ class ExtractionRepository(
      * Returns a flow of all call log entries.
      */
     fun extractCallLogs() = callLogEngine.extractCallLogs()
+
+    /**
+     * Returns a flow of raw VCard strings for all contacts.
+     */
+    fun extractContactsAsVCard() = contactsEngine.extractContactsAsVCard()
 }
