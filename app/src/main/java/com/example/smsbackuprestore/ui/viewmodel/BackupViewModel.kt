@@ -49,6 +49,17 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                     backupOrchestrator.performBackup(fos)
                 }
                 
+                // Check if Google Drive is enabled (Signed In)
+                val account = com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(getApplication())
+                if (account != null) {
+                    val driveSyncEngine = com.example.smsbackuprestore.data.sync.DriveSyncEngine(getApplication())
+                    val fileId = driveSyncEngine.uploadBackupToDrive(account, backupFile)
+                    if (fileId == null) {
+                        _backupState.value = BackupState.Error("Backup created locally, but Google Drive upload failed.")
+                        return@launch
+                    }
+                }
+                
                 _backupState.value = BackupState.Success(backupFile, Date())
             } catch (e: Exception) {
                 e.printStackTrace()
