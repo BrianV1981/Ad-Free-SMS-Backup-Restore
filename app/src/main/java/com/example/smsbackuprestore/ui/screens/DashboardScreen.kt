@@ -148,6 +148,12 @@ fun HeroStatusIndicator(backupState: BackupState) {
                 strokeWidth = 8.dp,
                 color = MaterialTheme.colorScheme.primary
             )
+            
+            Text(
+                text = "${(backupState.progress * 100).toInt()}%",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary
+            )
         } else {
             // Static representation for Idle/Success
             Surface(

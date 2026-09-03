@@ -16,7 +16,7 @@ import java.util.Date
 
 sealed class BackupState {
     object Idle : BackupState()
-    object BackingUp : BackupState()
+    data class BackingUp(val progress: Float = 0f) : BackupState()
     data class Success(val file: File, val date: Date) : BackupState()
     data class Error(val message: String) : BackupState()
 }
@@ -40,13 +40,15 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
     fun startBackup(outputDir: File) {
         if (_backupState.value is BackupState.BackingUp) return
         
-        _backupState.value = BackupState.BackingUp
+        _backupState.value = BackupState.BackingUp(0f)
         
         viewModelScope.launch {
             try {
                 val backupFile = File(outputDir, "sms_backup_${System.currentTimeMillis()}.zip")
                 FileOutputStream(backupFile).use { fos ->
-                    backupOrchestrator.performBackup(fos)
+                    backupOrchestrator.performBackup(fos) { progress ->
+                        _backupState.value = BackupState.BackingUp(progress)
+                    }
                 }
                 
                 // Check if Google Drive is enabled (Signed In)

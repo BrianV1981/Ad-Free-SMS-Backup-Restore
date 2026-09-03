@@ -13,6 +13,13 @@ import kotlinx.coroutines.flow.flowOn
 
 class MmsExtractionEngine(private val contentResolver: ContentResolver) {
 
+    fun getCount(): Int {
+        var count = 0
+        val cursor: Cursor? = contentResolver.query(Telephony.Mms.CONTENT_URI, arrayOf(Telephony.Mms._ID), null, null, null)
+        cursor?.use { count = it.count }
+        return count
+    }
+
     fun extractMms(): Flow<MmsMessage> = flow {
         val projection = arrayOf(
             Telephony.Mms._ID,

@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import android.content.Context
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.Scope
@@ -24,8 +25,11 @@ import com.google.api.services.drive.DriveScopes
 @Composable
 fun SettingsScreen(onNavigateBack: () -> Unit) {
     val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("sms_prefs", Context.MODE_PRIVATE) }
+    
     var driveSyncEnabled by remember { mutableStateOf(GoogleSignIn.getLastSignedInAccount(context) != null) }
     var encryptionEnabled by remember { mutableStateOf(false) }
+    var nestInFolderEnabled by remember { mutableStateOf(prefs.getBoolean("nest_in_folder", false)) }
 
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -97,6 +101,36 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                         Switch(
                             checked = encryptionEnabled,
                             onCheckedChange = { encryptionEnabled = it }
+                        )
+                    }
+                )
+            }
+            
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+            
+            item {
+                Text(
+                    text = "Developer Settings",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+            
+            item {
+                ListItem(
+                    headlineContent = { Text("Nest in Drive Folder") },
+                    supportingContent = { Text("Organize backups inside a dedicated 'Ad-Free SMS Backups' folder on Google Drive.") },
+                    trailingContent = {
+                        Switch(
+                            checked = nestInFolderEnabled,
+                            onCheckedChange = { 
+                                nestInFolderEnabled = it
+                                prefs.edit().putBoolean("nest_in_folder", it).apply()
+                            },
+                            enabled = driveSyncEnabled
                         )
                     }
                 )

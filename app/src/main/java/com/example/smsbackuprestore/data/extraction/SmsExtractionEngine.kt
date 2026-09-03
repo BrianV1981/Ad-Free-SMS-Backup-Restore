@@ -11,6 +11,13 @@ import kotlinx.coroutines.flow.flowOn
 
 class SmsExtractionEngine(private val contentResolver: ContentResolver) {
 
+    fun getCount(): Int {
+        var count = 0
+        val cursor: Cursor? = contentResolver.query(Telephony.Sms.CONTENT_URI, arrayOf(Telephony.Sms._ID), null, null, null)
+        cursor?.use { count = it.count }
+        return count
+    }
+
     /**
      * Extracts SMS messages from the device asynchronously using a Flow.
      * This handles large datasets without blocking the main thread.

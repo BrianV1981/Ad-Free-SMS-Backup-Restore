@@ -20,6 +20,10 @@ class ExtractionRepository(
         return merge(smsEngine.extractSms(), mmsEngine.extractMms())
     }
 
+    fun getTotalMessagesCount(): Int {
+        return smsEngine.getCount() + mmsEngine.getCount()
+    }
+
     /**
      * Returns a flow of all call log entries.
      */

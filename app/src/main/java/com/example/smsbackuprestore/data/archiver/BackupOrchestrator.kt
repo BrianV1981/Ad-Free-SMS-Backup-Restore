@@ -17,7 +17,14 @@ class BackupOrchestrator(
      * serializing them to XML/VCard, and compressing them directly into the outputStream.
      * Optionally encrypts the backup with AES-256 if a password is provided.
      */
-    suspend fun performBackup(outputStream: OutputStream, password: CharArray? = null) {
+    suspend fun performBackup(
+        outputStream: OutputStream, 
+        password: CharArray? = null,
+        onProgress: (Float) -> Unit = {}
+    ) {
+        val totalMessages = extractionRepository.getTotalMessagesCount()
+        var currentMessageCount = 0
+
         archiver.createArchive(outputStream, password) { zos ->
             
             val isEncrypted = password != null
@@ -28,11 +35,18 @@ class BackupOrchestrator(
                 stream.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<messages>\n".toByteArray(StandardCharsets.UTF_8))
                 
                 extractionRepository.extractAllMessages().collect { msg ->
+                    currentMessageCount++
+                    if (currentMessageCount % 50 == 0 && totalMessages > 0) {
+                        onProgress(currentMessageCount.toFloat() / totalMessages.toFloat())
+                    }
                     val xmlChunk = when (msg) {
                         is SmsMessage -> serializeSms(msg)
                         is MmsMessage -> serializeMms(msg)
                     }
                     stream.write(xmlChunk.toByteArray(StandardCharsets.UTF_8))
+                }
+                if (totalMessages > 0) {
+                    onProgress(1f) // 100% when messages are done
                 }
                 
                 stream.write("</messages>\n".toByteArray(StandardCharsets.UTF_8))

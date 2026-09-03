@@ -40,14 +40,46 @@ class DriveSyncEngine(private val context: Context) {
                 .setApplicationName("Ad-Free SMS Backup")
                 .build()
 
-            // 3. Prepare the metadata (file name and MIME type)
+            // 3. Check preferences for folder nesting
+            val prefs = context.getSharedPreferences("sms_prefs", Context.MODE_PRIVATE)
+            val nestInFolder = prefs.getBoolean("nest_in_folder", false)
+            
+            var parentFolderId: String? = null
+            
+            if (nestInFolder) {
+                // Search for the folder
+                val query = "mimeType = 'application/vnd.google-apps.folder' and name = 'Ad-Free SMS Backups' and trashed = false"
+                val fileList = driveService.files().list()
+                    .setQ(query)
+                    .setSpaces("drive")
+                    .setFields("files(id, name)")
+                    .execute()
+                    
+                if (fileList.files.isNotEmpty()) {
+                    parentFolderId = fileList.files[0].id
+                } else {
+                    // Create the folder
+                    val folderMetadata = com.google.api.services.drive.model.File().apply {
+                        name = "Ad-Free SMS Backups"
+                        this.mimeType = "application/vnd.google-apps.folder"
+                    }
+                    val folder = driveService.files().create(folderMetadata)
+                        .setFields("id")
+                        .execute()
+                    parentFolderId = folder.id
+                }
+            }
+
+            // 4. Prepare the metadata (file name and MIME type)
             val fileMetadata = com.google.api.services.drive.model.File().apply {
                 name = backupFile.name
                 this.mimeType = mimeType
-                // We could also set parents to a specific AppData folder if using DRIVE_APPDATA
+                if (parentFolderId != null) {
+                    parents = listOf(parentFolderId)
+                }
             }
 
-            // 4. Create the media content
+            // 5. Create the media content
             val mediaContent = InputStreamContent(
                 mimeType,
                 FileInputStream(backupFile)
