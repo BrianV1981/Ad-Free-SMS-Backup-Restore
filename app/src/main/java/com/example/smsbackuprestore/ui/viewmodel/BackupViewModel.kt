@@ -52,7 +52,9 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 val includeMmsMedia = prefs.getBoolean("include_mms_media", false)
                 
                 FileOutputStream(backupFile).use { fos ->
-                    backupOrchestrator.performBackup(fos, null, includeMmsMedia) { progress ->
+                    val isEncrypted = prefs.getBoolean("encryption_enabled", false)
+                    val password = if (isEncrypted) prefs.getString("encryption_password", "")?.toCharArray() else null
+                    backupOrchestrator.performBackup(fos, password, includeMmsMedia) { progress ->
                         _backupState.value = BackupState.BackingUp(progress)
                     }
                 }
@@ -136,7 +138,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 // Get password if encrypted
                 val prefs = getApplication<android.app.Application>().getSharedPreferences("sms_prefs", android.content.Context.MODE_PRIVATE)
                 val isEncrypted = prefs.getBoolean("encryption_enabled", false)
-                val password = if (isEncrypted) "default_password".toCharArray() else null // TODO: prompt user for password
+                val password = if (isEncrypted) prefs.getString("encryption_password", "")?.toCharArray() else null
                 
                 val archiver = BackupArchiver()
                 archiver.extractArchive(destFile, extractDir, password)
@@ -193,7 +195,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 
                 val prefs = getApplication<android.app.Application>().getSharedPreferences("sms_prefs", android.content.Context.MODE_PRIVATE)
                 val isEncrypted = prefs.getBoolean("encryption_enabled", false)
-                val password = if (isEncrypted) "default_password".toCharArray() else null 
+                val password = if (isEncrypted) prefs.getString("encryption_password", "")?.toCharArray() else null 
                 
                 val archiver = BackupArchiver()
                 archiver.extractArchive(destFile, extractDir, password)

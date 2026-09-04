@@ -31,9 +31,12 @@ fun SettingsScreen(
     var driveSyncEnabled by remember { mutableStateOf(GoogleSignIn.getLastSignedInAccount(context) != null) }
     var folderName by remember { mutableStateOf(prefs.getString("drive_folder_name", "Ad-Free SMS Backups") ?: "Ad-Free SMS Backups") }
     var showFolderDialog by remember { mutableStateOf(false) }
+    var showPasswordDialog by remember { mutableStateOf(false) }
+    var currentPassword by remember { mutableStateOf(prefs.getString("encryption_password", "") ?: "") }
     
     var encryptionEnabled by remember { mutableStateOf(prefs.getBoolean("encryption_enabled", false)) }
     var includeMmsMedia by remember { mutableStateOf(prefs.getBoolean("include_mms_media", false)) }
+    var biometricEnabled by remember { mutableStateOf(prefs.getBoolean("biometric_enabled", false)) }
     
     var autoBackupEnabled by remember { mutableStateOf(prefs.getBoolean("auto_backup_enabled", false)) }
     var requireWifi by remember { mutableStateOf(prefs.getBoolean("auto_backup_wifi", true)) }
@@ -121,8 +124,12 @@ fun SettingsScreen(
                         Switch(
                             checked = encryptionEnabled,
                             onCheckedChange = { 
-                                encryptionEnabled = it
-                                prefs.edit().putBoolean("encryption_enabled", it).apply()
+                                if (it) {
+                                    showPasswordDialog = true
+                                } else {
+                                    encryptionEnabled = false
+                                    prefs.edit().putBoolean("encryption_enabled", false).apply()
+                                }
                             }
                         )
                     }
@@ -239,9 +246,14 @@ fun SettingsScreen(
             item {
                 ListItem(
                     headlineContent = { Text("Biometric App-Lock") },
-                    supportingContent = { Text("Coming Soon in Issue #17") },
                     trailingContent = {
-                        Switch(checked = false, onCheckedChange = null, enabled = false)
+                        Switch(
+                            checked = biometricEnabled,
+                            onCheckedChange = { 
+                                biometricEnabled = it
+                                prefs.edit().putBoolean("biometric_enabled", it).apply()
+                            }
+                        )
                     }
                 )
             }
@@ -276,6 +288,50 @@ fun SettingsScreen(
                 )
             }
         }
+    }
+
+    
+    if (showPasswordDialog) {
+        var tempPassword by remember { mutableStateOf(currentPassword) }
+        AlertDialog(
+            onDismissRequest = { 
+                showPasswordDialog = false 
+                if (currentPassword.isBlank()) encryptionEnabled = false
+            },
+            title = { Text("Set Encryption Password") },
+            text = {
+                OutlinedTextField(
+                    value = tempPassword,
+                    onValueChange = { tempPassword = it },
+                    singleLine = true,
+                    label = { Text("Password") }
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    if (tempPassword.isNotBlank()) {
+                        currentPassword = tempPassword
+                        encryptionEnabled = true
+                        prefs.edit().putBoolean("encryption_enabled", true).apply()
+                        prefs.edit().putString("encryption_password", tempPassword).apply()
+                    } else {
+                        encryptionEnabled = false
+                        prefs.edit().putBoolean("encryption_enabled", false).apply()
+                    }
+                    showPasswordDialog = false
+                }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { 
+                    showPasswordDialog = false 
+                    if (currentPassword.isBlank()) encryptionEnabled = false
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     if (showFolderDialog) {
