@@ -18,6 +18,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.example.smsbackuprestore.R
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -69,33 +74,69 @@ fun DashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             
-            Spacer(modifier = Modifier.weight(1f))
-            
-            // Hero Section
-            HeroStatusIndicator(backupState = backupState)
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            Text(
-                text = when(backupState) {
-                    is BackupState.Idle -> "Your messages are ready to be backed up."
-                    is BackupState.BackingUp -> "Backing up your data... Please wait."
-                    is BackupState.Success -> "Backup completed successfully!"
-                    is BackupState.Error -> "An error occurred during backup."
-                },
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center
+            // Hero Image Logo
+            Image(
+                painter = painterResource(id = R.mipmap.ic_launcher_round),
+                contentDescription = "App Logo",
+                modifier = Modifier
+                    .size(160.dp)
+                    .padding(top = 32.dp)
             )
             
             Spacer(modifier = Modifier.weight(1f))
             
+            // Status Card
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = when(backupState) {
+                            is BackupState.Idle -> "System Ready"
+                            is BackupState.BackingUp -> "Backing Up..."
+                            is BackupState.Success -> "Backup Safe"
+                            is BackupState.Error -> "Backup Failed"
+                        },
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = when(backupState) {
+                            is BackupState.Idle -> "Your messages and call logs are ready to be backed up to the cloud."
+                            is BackupState.BackingUp -> "Encrypting and syncing your data... Please wait."
+                            is BackupState.Success -> "Backup completed successfully and safely synced."
+                            is BackupState.Error -> "An error occurred during backup."
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    if (backupState is BackupState.BackingUp) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        LinearProgressIndicator(
+                            progress = { (backupState as BackupState.BackingUp).progress },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
             // Primary Actions
-            FilledTonalButton(
+            Button(
                 onClick = { 
                     val hasPermissions = requiredPermissions.all {
                         ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
@@ -106,23 +147,25 @@ fun DashboardScreen(
                         permissionLauncher.launch(requiredPermissions)
                     }
                 },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                enabled = backupState !is BackupState.BackingUp
+                modifier = Modifier.fillMaxWidth().height(60.dp),
+                enabled = backupState !is BackupState.BackingUp,
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text("Backup Now", style = MaterialTheme.typography.titleMedium)
+                Text("Backup Now", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             
             Spacer(modifier = Modifier.height(16.dp))
             
             OutlinedButton(
                 onClick = { viewModel.fetchRestoreOptions() },
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                enabled = backupState !is BackupState.BackingUp
+                modifier = Modifier.fillMaxWidth().height(60.dp),
+                enabled = backupState !is BackupState.BackingUp,
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text("Restore", style = MaterialTheme.typography.titleMedium)
+                Text("Restore Data", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(48.dp))
         }
     }
     
@@ -270,50 +313,3 @@ fun DashboardScreen(
     }
 }
 
-@Composable
-fun HeroStatusIndicator(backupState: BackupState) {
-    Box(
-        modifier = Modifier.size(200.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        if (backupState is BackupState.BackingUp) {
-            val infiniteTransition = rememberInfiniteTransition()
-            val angle by infiniteTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = 360f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(2000, easing = LinearEasing)
-                )
-            )
-            
-            CircularProgressIndicator(
-                modifier = Modifier
-                    .size(150.dp)
-                    .graphicsLayer { rotationZ = angle },
-                strokeWidth = 8.dp,
-                color = MaterialTheme.colorScheme.primary
-            )
-            
-            Text(
-                text = "${(backupState.progress * 100).toInt()}%",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-        } else {
-            // Static representation for Idle/Success
-            Surface(
-                shape = MaterialTheme.shapes.extraLarge,
-                color = MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier.size(150.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = if (backupState is BackupState.Success) "SAFE" else "READY",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
-        }
-    }
-}

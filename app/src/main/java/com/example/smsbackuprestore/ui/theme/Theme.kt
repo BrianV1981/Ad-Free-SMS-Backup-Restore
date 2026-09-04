@@ -16,22 +16,32 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = androidx.compose.ui.graphics.Color(0xFF80CBE3),
-    secondary = androidx.compose.ui.graphics.Color(0xFF4DB6AC),
-    tertiary = androidx.compose.ui.graphics.Color(0xFF81C784)
+    primary = androidx.compose.ui.graphics.Color(0xFFFFA726), // Vibrant Orange
+    onPrimary = androidx.compose.ui.graphics.Color(0xFFFFFFFF),
+    secondary = androidx.compose.ui.graphics.Color(0xFF29B6F6), // Chat Bubble Blue
+    tertiary = androidx.compose.ui.graphics.Color(0xFF66BB6A), // Green Accent
+    background = androidx.compose.ui.graphics.Color(0xFF16161A), // Sleek Slate Grey
+    surface = androidx.compose.ui.graphics.Color(0xFF1E1E24), // Slightly lighter surface
+    onBackground = androidx.compose.ui.graphics.Color(0xFFEEEEEE),
+    onSurface = androidx.compose.ui.graphics.Color(0xFFEEEEEE)
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = androidx.compose.ui.graphics.Color(0xFF0277BD),
-    secondary = androidx.compose.ui.graphics.Color(0xFF00838F),
-    tertiary = androidx.compose.ui.graphics.Color(0xFF2E7D32)
+    primary = androidx.compose.ui.graphics.Color(0xFFFF9800), // Vibrant Orange
+    onPrimary = androidx.compose.ui.graphics.Color(0xFFFFFFFF),
+    secondary = androidx.compose.ui.graphics.Color(0xFF03A9F4), // Chat Bubble Blue
+    tertiary = androidx.compose.ui.graphics.Color(0xFF4CAF50), // Green Accent
+    background = androidx.compose.ui.graphics.Color(0xFFF5F5F5), // Light grey
+    surface = androidx.compose.ui.graphics.Color(0xFFFFFFFF),
+    onBackground = androidx.compose.ui.graphics.Color(0xFF1C1C1E),
+    onSurface = androidx.compose.ui.graphics.Color(0xFF1C1C1E)
 )
 
 @Composable
 fun AdFreeSmsBackupTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
