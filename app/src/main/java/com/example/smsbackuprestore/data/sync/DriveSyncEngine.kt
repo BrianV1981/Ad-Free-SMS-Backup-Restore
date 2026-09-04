@@ -49,7 +49,8 @@ class DriveSyncEngine(private val context: Context) {
             
             if (nestInFolder) {
                 // Search for the folder
-                val query = "mimeType = 'application/vnd.google-apps.folder' and name = 'Ad-Free SMS Backups' and trashed = false"
+                val folderName = prefs.getString("drive_folder_name", "Ad-Free SMS Backups") ?: "Ad-Free SMS Backups"
+                val query = "mimeType = 'application/vnd.google-apps.folder' and name = '${folderName}' and trashed = false"
                 val fileList = driveService.files().list()
                     .setQ(query)
                     .setSpaces("drive")
@@ -61,7 +62,7 @@ class DriveSyncEngine(private val context: Context) {
                 } else {
                     // Create the folder
                     val folderMetadata = com.google.api.services.drive.model.File().apply {
-                        name = "Ad-Free SMS Backups"
+                        name = folderName
                         this.mimeType = "application/vnd.google-apps.folder"
                     }
                     val folder = driveService.files().create(folderMetadata)
@@ -176,7 +177,9 @@ class DriveSyncEngine(private val context: Context) {
                 .setApplicationName("Ad-Free SMS Backup")
                 .build()
                 
-            val folderQuery = "mimeType = 'application/vnd.google-apps.folder' and name = 'Ad-Free SMS Backups' and trashed = false"
+            val prefs = context.getSharedPreferences("sms_prefs", android.content.Context.MODE_PRIVATE)
+            val folderName = prefs.getString("drive_folder_name", "Ad-Free SMS Backups") ?: "Ad-Free SMS Backups"
+            val folderQuery = "mimeType = 'application/vnd.google-apps.folder' and name = '${folderName}' and trashed = false"
             val folderList = driveService.files().list().setQ(folderQuery).setSpaces("drive").setFields("files(id)").execute()
             
             if (folderList.files.isEmpty()) return@withContext null
