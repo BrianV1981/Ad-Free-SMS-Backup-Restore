@@ -1,5 +1,9 @@
 package com.example.smsbackuprestore.data.archiver
 
+import android.content.ContentResolver
+import android.net.Uri
+import android.util.Base64
+import java.io.InputStream
 import com.example.smsbackuprestore.data.extraction.ExtractionRepository
 import com.example.smsbackuprestore.data.model.CallLogEntry
 import com.example.smsbackuprestore.data.model.MmsMessage
@@ -8,6 +12,7 @@ import java.io.OutputStream
 import java.nio.charset.StandardCharsets
 
 class BackupOrchestrator(
+    private val contentResolver: ContentResolver,
     private val extractionRepository: ExtractionRepository,
     private val archiver: BackupArchiver
 ) {
@@ -20,6 +25,7 @@ class BackupOrchestrator(
     suspend fun performBackup(
         outputStream: OutputStream, 
         password: CharArray? = null,
+        includeMmsMedia: Boolean = false,
         onProgress: (Float) -> Unit = {}
     ) {
         val totalMessages = extractionRepository.getTotalMessagesCount()
@@ -39,11 +45,10 @@ class BackupOrchestrator(
                     if (currentMessageCount % 50 == 0 && totalMessages > 0) {
                         onProgress(currentMessageCount.toFloat() / totalMessages.toFloat())
                     }
-                    val xmlChunk = when (msg) {
-                        is SmsMessage -> serializeSms(msg)
-                        is MmsMessage -> serializeMms(msg)
+                    when (msg) {
+                        is SmsMessage -> serializeSms(msg, stream)
+                        is MmsMessage -> serializeMms(msg, stream, includeMmsMedia)
                     }
-                    stream.write(xmlChunk.toByteArray(StandardCharsets.UTF_8))
                 }
                 if (totalMessages > 0) {
                     onProgress(1f) // 100% when messages are done
@@ -73,15 +78,46 @@ class BackupOrchestrator(
         }
     }
 
-    private fun serializeSms(sms: SmsMessage): String {
-        // Simplified XML serialization for MVP. In production, use XmlSerializer to escape entities properly.
-        return "  <sms address=\"${escapeXml(sms.address)}\" date=\"${sms.date}\" type=\"${sms.type}\" body=\"${escapeXml(sms.body)}\" read=\"${sms.read}\" />\n"
+    private fun serializeSms(sms: SmsMessage, stream: OutputStream) {
+        val xml = "  <sms address=\"${escapeXml(sms.address)}\" date=\"${sms.date}\" type=\"${sms.type}\" body=\"${escapeXml(sms.body)}\" read=\"${sms.read}\" />\n"
+        stream.write(xml.toByteArray(StandardCharsets.UTF_8))
     }
 
-    private fun serializeMms(mms: MmsMessage): String {
-        return "  <mms address=\"${escapeXml(mms.address)}\" date=\"${mms.date}\" msg_box=\"${mms.msgBox}\" read=\"${mms.read}\">\n" +
-               "    <text>${escapeXml(mms.textBody ?: "")}</text>\n" +
-               "  </mms>\n"
+    private fun serializeMms(mms: MmsMessage, stream: OutputStream, includeMmsMedia: Boolean) {
+        stream.write("  <mms address=\"${escapeXml(mms.address)}\" date=\"${mms.date}\" msg_box=\"${mms.msgBox}\" read=\"${mms.read}\">\n".toByteArray(StandardCharsets.UTF_8))
+        stream.write("    <parts>\n".toByteArray(StandardCharsets.UTF_8))
+        
+        for (part in mms.parts) {
+            if (part.contentType == "text/plain") {
+                val textData = escapeXml(part.text ?: "")
+                stream.write("      <part ct=\"${escapeXml(part.contentType)}\" name=\"${escapeXml(part.name ?: "null")}\" text=\"${textData}\" />\n".toByteArray(StandardCharsets.UTF_8))
+            } else if (includeMmsMedia && part.dataUri != null) {
+                // For media parts, we stream the file as Base64 to prevent OutOfMemory on huge videos/images
+                stream.write("      <part ct=\"${escapeXml(part.contentType)}\" name=\"${escapeXml(part.name ?: "null")}\" data=\"".toByteArray(StandardCharsets.UTF_8))
+                streamBase64Part(part.dataUri, stream)
+                stream.write("\" />\n".toByteArray(StandardCharsets.UTF_8))
+            }
+        }
+        
+        stream.write("    </parts>\n".toByteArray(StandardCharsets.UTF_8))
+        stream.write("  </mms>\n".toByteArray(StandardCharsets.UTF_8))
+    }
+
+    private fun streamBase64Part(dataUri: String, stream: OutputStream) {
+        try {
+            contentResolver.openInputStream(Uri.parse(dataUri))?.use { inputStream ->
+                // Must be a multiple of 3 to avoid internal padding characters "=" breaking the continuous stream
+                val buffer = ByteArray(8190)
+                var bytesRead: Int
+                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                    val base64Bytes = Base64.encode(buffer, 0, bytesRead, Base64.NO_WRAP)
+                    stream.write(base64Bytes)
+                }
+            }
+        } catch (e: Exception) {
+            // If the media part no longer exists on device or fails, just silently skip to prevent backup failure
+            e.printStackTrace()
+        }
     }
 
     private fun serializeCall(call: CallLogEntry): String {

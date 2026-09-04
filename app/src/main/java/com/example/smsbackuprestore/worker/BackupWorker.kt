@@ -37,17 +37,18 @@ class BackupWorker(
             )
 
             val archiver = BackupArchiver()
-            val backupOrchestrator = BackupOrchestrator(extractionRepository, archiver)
+            val backupOrchestrator = BackupOrchestrator(contentResolver, extractionRepository, archiver)
             val driveSyncEngine = DriveSyncEngine(appContext)
 
             val backupFile = File(appContext.cacheDir, "sms_backup_${System.currentTimeMillis()}.zip")
             
             val prefs = appContext.getSharedPreferences("sms_prefs", Context.MODE_PRIVATE)
             val isEncrypted = prefs.getBoolean("encryption_enabled", false)
+            val includeMmsMedia = prefs.getBoolean("include_mms_media", false)
             val password = if (isEncrypted) "default_password".toCharArray() else null // TODO: retrieve secure password in a real app
 
             FileOutputStream(backupFile).use { fos ->
-                backupOrchestrator.performBackup(fos, password)
+                backupOrchestrator.performBackup(fos, password, includeMmsMedia)
             }
 
             val messageCount = extractionRepository.getTotalMessagesCount()

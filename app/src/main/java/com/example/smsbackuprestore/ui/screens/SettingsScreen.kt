@@ -34,6 +34,8 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
     var autoBackupEnabled by remember { mutableStateOf(prefs.getBoolean("auto_backup_enabled", false)) }
     var requireWifi by remember { mutableStateOf(prefs.getBoolean("auto_backup_wifi", true)) }
     var requireCharging by remember { mutableStateOf(prefs.getBoolean("auto_backup_charging", true)) }
+    
+    var includeMmsMedia by remember { mutableStateOf(prefs.getBoolean("include_mms_media", false)) }
 
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -105,6 +107,22 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                         Switch(
                             checked = encryptionEnabled,
                             onCheckedChange = { encryptionEnabled = it }
+                        )
+                    }
+                )
+            }
+            
+            item {
+                ListItem(
+                    headlineContent = { Text("Include MMS Media (Pictures & Video)") },
+                    supportingContent = { Text("Warning: Dramatically increases backup size and upload time.") },
+                    trailingContent = {
+                        Switch(
+                            checked = includeMmsMedia,
+                            onCheckedChange = { 
+                                includeMmsMedia = it
+                                prefs.edit().putBoolean("include_mms_media", it).apply()
+                            }
                         )
                     }
                 )

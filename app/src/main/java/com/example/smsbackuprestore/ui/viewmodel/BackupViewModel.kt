@@ -6,6 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.smsbackuprestore.data.archiver.BackupArchiver
 import com.example.smsbackuprestore.data.archiver.BackupOrchestrator
 import com.example.smsbackuprestore.data.extraction.ExtractionRepository
+import com.example.smsbackuprestore.data.extraction.SmsExtractionEngine
+import com.example.smsbackuprestore.data.extraction.MmsExtractionEngine
+import com.example.smsbackuprestore.data.extraction.CallLogExtractionEngine
+import com.example.smsbackuprestore.data.extraction.ContactsExtractionEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,16 +30,15 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
     private val _backupState = MutableStateFlow<BackupState>(BackupState.Idle)
     val backupState: StateFlow<BackupState> = _backupState.asStateFlow()
 
-    private val extractionRepository by lazy { 
-        ExtractionRepository(
-            com.example.smsbackuprestore.data.extraction.SmsExtractionEngine(application.contentResolver),
-            com.example.smsbackuprestore.data.extraction.MmsExtractionEngine(application.contentResolver),
-            com.example.smsbackuprestore.data.extraction.CallLogExtractionEngine(application.contentResolver),
-            com.example.smsbackuprestore.data.extraction.ContactsExtractionEngine(application.contentResolver)
-        ) 
-    }
+    private val contentResolver = getApplication<android.app.Application>().contentResolver
+    private val extractionRepository = ExtractionRepository(
+        SmsExtractionEngine(contentResolver),
+        MmsExtractionEngine(contentResolver),
+        CallLogExtractionEngine(contentResolver),
+        ContactsExtractionEngine(contentResolver)
+    )
     private val backupArchiver by lazy { BackupArchiver() }
-    private val backupOrchestrator by lazy { BackupOrchestrator(extractionRepository, backupArchiver) }
+    private val backupOrchestrator by lazy { BackupOrchestrator(contentResolver, extractionRepository, backupArchiver) }
 
     fun startBackup(outputDir: File) {
         if (_backupState.value is BackupState.BackingUp) return
@@ -45,8 +48,11 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             try {
                 val backupFile = File(outputDir, "sms_backup_${System.currentTimeMillis()}.zip")
+                val prefs = getApplication<android.app.Application>().getSharedPreferences("sms_prefs", android.content.Context.MODE_PRIVATE)
+                val includeMmsMedia = prefs.getBoolean("include_mms_media", false)
+                
                 FileOutputStream(backupFile).use { fos ->
-                    backupOrchestrator.performBackup(fos) { progress ->
+                    backupOrchestrator.performBackup(fos, null, includeMmsMedia) { progress ->
                         _backupState.value = BackupState.BackingUp(progress)
                     }
                 }
