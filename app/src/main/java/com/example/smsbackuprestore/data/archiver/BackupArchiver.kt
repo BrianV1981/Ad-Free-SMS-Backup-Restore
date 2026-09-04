@@ -61,4 +61,23 @@ class BackupArchiver {
             }
         }
     }
+    
+    /**
+     * Extracts a zip archive to the specified directory.
+     * Requires password if encrypted.
+     */
+    suspend fun extractArchive(
+        zipFile: java.io.File,
+        destDir: java.io.File,
+        password: CharArray? = null
+    ) {
+        withContext(Dispatchers.IO) {
+            val zip = if (password != null) {
+                net.lingala.zip4j.ZipFile(zipFile, password)
+            } else {
+                net.lingala.zip4j.ZipFile(zipFile)
+            }
+            zip.extractAll(destDir.absolutePath)
+        }
+    }
 }

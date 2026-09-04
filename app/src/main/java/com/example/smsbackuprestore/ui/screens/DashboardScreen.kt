@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -146,6 +147,30 @@ fun DashboardScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text("Fetching backup history from Google Drive...")
                     }
+                    is com.example.smsbackuprestore.ui.viewmodel.RestoreState.Downloading -> {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Downloading backup from Google Drive...")
+                    }
+                    is com.example.smsbackuprestore.ui.viewmodel.RestoreState.Extracting -> {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Decrypting and unzipping archive...")
+                    }
+                    is com.example.smsbackuprestore.ui.viewmodel.RestoreState.Parsing -> {
+                        val parsingState = restoreState as com.example.smsbackuprestore.ui.viewmodel.RestoreState.Parsing
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Parsing XML: ${parsingState.smsCount} SMS, ${parsingState.mmsCount} MMS")
+                    }
+                    is com.example.smsbackuprestore.ui.viewmodel.RestoreState.Success -> {
+                        val successState = restoreState as com.example.smsbackuprestore.ui.viewmodel.RestoreState.Success
+                        Icon(imageVector = Icons.Default.Check, contentDescription = "Success", modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Dry Run Complete!", style = MaterialTheme.typography.titleLarge)
+                        Text("Successfully parsed ${successState.smsCount} SMS and ${successState.mmsCount} MMS messages.")
+                        Text("0 messages were actually written to your device.", color = MaterialTheme.colorScheme.secondary)
+                    }
                     is com.example.smsbackuprestore.ui.viewmodel.RestoreState.Error -> {
                         val msg = (restoreState as com.example.smsbackuprestore.ui.viewmodel.RestoreState.Error).message
                         Text(msg, color = MaterialTheme.colorScheme.error)
@@ -162,7 +187,7 @@ fun DashboardScreen(
                                     headlineContent = { Text(dateStr) },
                                     supportingContent = { Text("${entry.messageCount} messages") },
                                     modifier = Modifier.clickable {
-                                        // TODO: Actual restore execution (Issue #15)
+                                        viewModel.startRestoreDryRun(entry)
                                     }
                                 )
                                 HorizontalDivider()

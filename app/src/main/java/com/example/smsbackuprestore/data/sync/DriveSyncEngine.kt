@@ -197,4 +197,27 @@ class DriveSyncEngine(private val context: Context) {
             null
         }
     }
+
+    suspend fun downloadBackupFromDrive(
+        account: GoogleSignInAccount,
+        fileId: String,
+        destFile: File
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val credential = GoogleAccountCredential.usingOAuth2(context, listOf(DriveScopes.DRIVE_FILE))
+            credential.selectedAccount = account.account
+            
+            val driveService = Drive.Builder(NetHttpTransport(), GsonFactory.getDefaultInstance(), credential)
+                .setApplicationName("Ad-Free SMS Backup")
+                .build()
+
+            val outputStream = java.io.FileOutputStream(destFile)
+            driveService.files().get(fileId).executeMediaAndDownloadTo(outputStream)
+            outputStream.close()
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
 }
