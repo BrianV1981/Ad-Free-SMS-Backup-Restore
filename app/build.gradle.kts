@@ -88,6 +88,7 @@ dependencies {
 
   // Navigation
   implementation(libs.androidx.navigation.compose)
+  implementation(libs.androidx.work.runtime.ktx)
   
   // Google Drive & Auth
   implementation(libs.play.services.auth)

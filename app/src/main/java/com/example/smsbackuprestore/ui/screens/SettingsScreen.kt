@@ -30,6 +30,10 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
     var driveSyncEnabled by remember { mutableStateOf(GoogleSignIn.getLastSignedInAccount(context) != null) }
     var encryptionEnabled by remember { mutableStateOf(false) }
     var nestInFolderEnabled by remember { mutableStateOf(prefs.getBoolean("nest_in_folder", true)) }
+    
+    var autoBackupEnabled by remember { mutableStateOf(prefs.getBoolean("auto_backup_enabled", false)) }
+    var requireWifi by remember { mutableStateOf(prefs.getBoolean("auto_backup_wifi", true)) }
+    var requireCharging by remember { mutableStateOf(prefs.getBoolean("auto_backup_charging", true)) }
 
     val googleSignInLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -106,6 +110,82 @@ fun SettingsScreen(onNavigateBack: () -> Unit) {
                 )
             }
             
+            item {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+            
+            item {
+                Text(
+                    text = "Automation",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+
+            item {
+                ListItem(
+                    headlineContent = { Text("Scheduled Backups") },
+                    supportingContent = { Text("Silently runs a backup in the background daily.") },
+                    trailingContent = {
+                        Switch(
+                            checked = autoBackupEnabled,
+                            onCheckedChange = { 
+                                autoBackupEnabled = it
+                                prefs.edit().putBoolean("auto_backup_enabled", it).apply()
+                                if (it) {
+                                    com.example.smsbackuprestore.worker.WorkManagerHelper.scheduleBackup(
+                                        context = context,
+                                        intervalDays = 1, // Daily
+                                        requireWifi = requireWifi,
+                                        requireCharging = requireCharging
+                                    )
+                                } else {
+                                    com.example.smsbackuprestore.worker.WorkManagerHelper.cancelBackup(context)
+                                }
+                            },
+                            enabled = driveSyncEnabled
+                        )
+                    }
+                )
+            }
+
+            if (autoBackupEnabled) {
+                item {
+                    ListItem(
+                        headlineContent = { Text("Require Wi-Fi") },
+                        supportingContent = { Text("Wait for unmetered network connection") },
+                        trailingContent = {
+                            Switch(
+                                checked = requireWifi,
+                                onCheckedChange = { 
+                                    requireWifi = it
+                                    prefs.edit().putBoolean("auto_backup_wifi", it).apply()
+                                    com.example.smsbackuprestore.worker.WorkManagerHelper.scheduleBackup(context, 1, it, requireCharging)
+                                }
+                            )
+                        }
+                    )
+                }
+
+                item {
+                    ListItem(
+                        headlineContent = { Text("Require Charging") },
+                        supportingContent = { Text("Wait until device is plugged in") },
+                        trailingContent = {
+                            Switch(
+                                checked = requireCharging,
+                                onCheckedChange = { 
+                                    requireCharging = it
+                                    prefs.edit().putBoolean("auto_backup_charging", it).apply()
+                                    com.example.smsbackuprestore.worker.WorkManagerHelper.scheduleBackup(context, 1, requireWifi, it)
+                                }
+                            )
+                        }
+                    )
+                }
+            }
+
             item {
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
             }
