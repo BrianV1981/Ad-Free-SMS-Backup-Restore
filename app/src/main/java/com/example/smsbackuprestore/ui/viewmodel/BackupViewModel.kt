@@ -21,7 +21,7 @@ import java.util.Date
 sealed class BackupState {
     object Idle : BackupState()
     data class BackingUp(val progress: Float = 0f) : BackupState()
-    data class Success(val file: File, val date: Date) : BackupState()
+    data class Success(val file: File, val date: Date, val messageCount: Int = 0) : BackupState()
     data class Error(val message: String) : BackupState()
 }
 
@@ -60,9 +60,9 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 
                 // Check if Google Drive is enabled (Signed In)
+                val messageCount = extractionRepository.getTotalMessagesCount()
                 val account = com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(getApplication())
                 if (account != null) {
-                    val messageCount = extractionRepository.getTotalMessagesCount()
                     val driveSyncEngine = com.example.smsbackuprestore.data.sync.DriveSyncEngine(getApplication())
                     val fileId = driveSyncEngine.uploadBackupToDrive(account, backupFile, messageCount)
                     if (fileId == null) {
@@ -71,7 +71,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                     }
                 }
                 
-                _backupState.value = BackupState.Success(backupFile, Date())
+                _backupState.value = BackupState.Success(backupFile, Date(), messageCount)
             } catch (e: Exception) {
                 e.printStackTrace()
                 _backupState.value = BackupState.Error(e.localizedMessage ?: "Unknown error occurred")

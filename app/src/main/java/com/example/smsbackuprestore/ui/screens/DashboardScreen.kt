@@ -115,7 +115,7 @@ fun DashboardScreen(
                         text = when(backupState) {
                             is BackupState.Idle -> "Your messages and call logs are ready to be backed up to the cloud."
                             is BackupState.BackingUp -> "Encrypting and syncing your data... Please wait."
-                            is BackupState.Success -> "Backup completed successfully and safely synced."
+                            is BackupState.Success -> "Safely backed up  messages to the cloud."
                             is BackupState.Error -> "An error occurred during backup."
                         },
                         style = MaterialTheme.typography.bodyMedium,
@@ -123,13 +123,22 @@ fun DashboardScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     
+
                     if (backupState is BackupState.BackingUp) {
                         Spacer(modifier = Modifier.height(16.dp))
+                        
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Progress", style = MaterialTheme.typography.bodySmall)
+                            Text("%", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                        }
+                        
+                        Spacer(modifier = Modifier.height(4.dp))
                         LinearProgressIndicator(
                             progress = { (backupState as BackupState.BackingUp).progress },
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
+
                 }
             }
             
