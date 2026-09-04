@@ -16,3 +16,8 @@
 - Researched native RCS extraction and verified it is blocked by Google's private `bugle_db` implementation.
 - Added [RCS Limitations & Storage](pages/rcs_limitations.md).
 - Updated index.md.
+## [2026-09-04] ingest | Default SMS App & Restricted Settings
+- Documented the RoleManager.ROLE_SMS requirements (dummy receivers and manifest permissions).
+- Documented the Android 13+ "Restricted Settings" sideloading block and how to manually bypass it during development.
+- Added [Default SMS App & Restricted Settings](pages/default_sms_restricted_settings.md).
+- Updated index.md.

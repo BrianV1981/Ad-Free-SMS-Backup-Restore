@@ -8,3 +8,4 @@ Welcome to the persistent memory wiki for the Ad-Free SMS Backup & Restore proje
 ## Architecture
 - [Data Extraction & Backup Pipeline](pages/data_extraction_architecture.md) - Details on the memory-efficient streaming extraction and ZIP serialization architecture.
 - [RCS Limitations & Storage](pages/rcs_limitations.md) - Details on `bugle_db` and why native RCS extraction requires Root.
+- [Default SMS App & Restricted Settings](pages/default_sms_restricted_settings.md) - Explains `RoleManager` requirements, dummy components, and Android 13+ sideloading restrictions.
