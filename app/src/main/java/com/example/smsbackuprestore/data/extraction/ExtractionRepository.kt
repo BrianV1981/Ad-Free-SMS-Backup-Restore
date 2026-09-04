@@ -27,6 +27,11 @@ class ExtractionRepository(
     /**
      * Returns a flow of all call log entries.
      */
+
+    fun getTotalContactsCount(): Int {
+        return contactsEngine.getCount()
+    }
+
     fun extractCallLogs() = callLogEngine.extractCallLogs()
 
     /**

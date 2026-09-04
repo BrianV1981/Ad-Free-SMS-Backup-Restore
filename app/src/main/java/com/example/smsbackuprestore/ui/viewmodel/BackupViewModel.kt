@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Date
@@ -40,7 +41,24 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
     private val backupArchiver by lazy { BackupArchiver() }
     private val backupOrchestrator by lazy { BackupOrchestrator(contentResolver, extractionRepository, backupArchiver) }
 
+
+    private val _availableCounts = MutableStateFlow<Pair<Int, Int>?>(null)
+    val availableCounts: StateFlow<Pair<Int, Int>?> = _availableCounts.asStateFlow()
+
+    fun fetchCounts() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val messages = extractionRepository.getTotalMessagesCount()
+                val contacts = extractionRepository.getTotalContactsCount()
+                _availableCounts.value = Pair(messages, contacts)
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+    }
+
     fun startBackup(outputDir: File) {
+
         if (_backupState.value is BackupState.BackingUp) return
         
         _backupState.value = BackupState.BackingUp(0f)

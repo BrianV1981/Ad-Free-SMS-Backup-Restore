@@ -11,6 +11,9 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Check
@@ -22,7 +25,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import com.example.smsbackuprestore.R
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -39,6 +41,7 @@ fun DashboardScreen(
     viewModel: BackupViewModel = viewModel()
 ) {
     val backupState by viewModel.backupState.collectAsState()
+    val availableCounts by viewModel.availableCounts.collectAsState()
     val context = LocalContext.current
     
     val requiredPermissions = arrayOf(
@@ -46,12 +49,24 @@ fun DashboardScreen(
         Manifest.permission.READ_CALL_LOG,
         Manifest.permission.READ_CONTACTS
     )
+    
+    var hasPermissions by remember { mutableStateOf(false) }
+    LaunchedEffect(context) {
+        hasPermissions = requiredPermissions.all {
+            ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
+        }
+        if (hasPermissions) {
+            viewModel.fetchCounts()
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
         val allGranted = permissions.values.all { it }
         if (allGranted) {
+            hasPermissions = true
+            viewModel.fetchCounts()
             viewModel.startBackup(context.cacheDir)
         } else {
             // Handle denied permission visually (TODO: show snackbar)
@@ -99,21 +114,15 @@ fun DashboardScreen(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
+                                        Text(
                         text = when(backupState) {
-                            is BackupState.Idle -> "System Ready"
-                            is BackupState.BackingUp -> "Backing Up..."
-                            is BackupState.Success -> "Backup Safe"
-                            is BackupState.Error -> "Backup Failed"
-                        },
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = when(backupState) {
-                            is BackupState.Idle -> "Your messages and call logs are ready to be backed up to the cloud."
+                            is BackupState.Idle -> {
+                                if (availableCounts != null) {
+                                    "Ready to backup  messages and  contacts to the cloud."
+                                } else {
+                                    "Your messages and call logs are ready to be backed up to the cloud."
+                                }
+                            }
                             is BackupState.BackingUp -> "Encrypting and syncing your data... Please wait."
                             is BackupState.Success -> "Safely backed up  messages to the cloud."
                             is BackupState.Error -> "An error occurred during backup."
@@ -129,14 +138,25 @@ fun DashboardScreen(
                         
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("Progress", style = MaterialTheme.typography.bodySmall)
-                            Text("%", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                            Text("${((viewModel.backupState.value as BackupState.BackingUp).progress * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                         }
                         
                         Spacer(modifier = Modifier.height(4.dp))
-                        LinearProgressIndicator(
-                            progress = { (backupState as BackupState.BackingUp).progress },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
+                        val progressValue = (viewModel.backupState.value as BackupState.BackingUp).progress
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(fraction = progressValue)
+                                    .fillMaxHeight()
+                                    .background(MaterialTheme.colorScheme.primary)
+                            )
+                        }
                     }
 
                 }
@@ -147,9 +167,6 @@ fun DashboardScreen(
             // Primary Actions
             Button(
                 onClick = { 
-                    val hasPermissions = requiredPermissions.all {
-                        ContextCompat.checkSelfPermission(context, it) == PackageManager.PERMISSION_GRANTED
-                    }
                     if (hasPermissions) {
                         viewModel.startBackup(context.cacheDir) 
                     } else {

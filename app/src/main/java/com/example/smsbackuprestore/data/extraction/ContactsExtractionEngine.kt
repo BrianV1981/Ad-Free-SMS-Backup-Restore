@@ -13,6 +13,20 @@ import java.io.InputStreamReader
 
 class ContactsExtractionEngine(private val contentResolver: ContentResolver) {
 
+
+    fun getCount(): Int {
+        var count = 0
+        val cursor: Cursor? = contentResolver.query(
+            ContactsContract.Contacts.CONTENT_URI,
+            arrayOf(ContactsContract.Contacts._ID),
+            null,
+            null,
+            null
+        )
+        cursor?.use { count = it.count }
+        return count
+    }
+
     /**
      * Extracts all contacts as VCard formatted strings.
      * Android OS natively provides a way to export contacts as VCards via ContactsContract.
