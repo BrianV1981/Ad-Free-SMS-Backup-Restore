@@ -171,12 +171,79 @@ fun DashboardScreen(
                         Text("Successfully parsed ${successState.smsCount} SMS and ${successState.mmsCount} MMS messages.")
                         Text("0 messages were actually written to your device.", color = MaterialTheme.colorScheme.secondary)
                     }
+                    is com.example.smsbackuprestore.ui.viewmodel.RestoreState.SuccessReal -> {
+                        val successState = restoreState as com.example.smsbackuprestore.ui.viewmodel.RestoreState.SuccessReal
+                        Icon(imageVector = Icons.Default.Check, contentDescription = "Success", modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Restore Complete!", style = MaterialTheme.typography.titleLarge)
+                        Text("Successfully restored ${successState.smsCount} SMS and ${successState.mmsCount} MMS messages.")
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = {
+                            val intent = android.content.Intent(android.provider.Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
+                            context.startActivity(intent)
+                        }) {
+                            Text("Restore Original Default SMS App")
+                        }
+                    }
                     is com.example.smsbackuprestore.ui.viewmodel.RestoreState.Error -> {
                         val msg = (restoreState as com.example.smsbackuprestore.ui.viewmodel.RestoreState.Error).message
                         Text(msg, color = MaterialTheme.colorScheme.error)
                     }
                     is com.example.smsbackuprestore.ui.viewmodel.RestoreState.Options -> {
                         val manifest = (restoreState as com.example.smsbackuprestore.ui.viewmodel.RestoreState.Options).manifest
+                        
+                        var selectedEntry by remember { mutableStateOf<com.example.smsbackuprestore.data.model.BackupEntry?>(null) }
+                        
+                        val roleManager = context.getSystemService(android.content.Context.ROLE_SERVICE) as? android.app.role.RoleManager
+                        val defaultSmsLauncher = rememberLauncherForActivityResult(
+                            contract = ActivityResultContracts.StartActivityForResult()
+                        ) { result ->
+                            if (result.resultCode == android.app.Activity.RESULT_OK) {
+                                selectedEntry?.let { viewModel.startRealRestore(it) }
+                            } else {
+                                viewModel.setRestoreError("Permission to become Default SMS App was denied.")
+                            }
+                        }
+
+                        if (selectedEntry != null) {
+                            AlertDialog(
+                                onDismissRequest = { selectedEntry = null },
+                                title = { Text("Choose Restore Mode") },
+                                text = { Text("Dry-Run will safely test the backup archive without modifying your device.\n\nReal Restore will securely request to become your Default SMS App, restore the messages, and hand control back to your original messenger.") },
+                                confirmButton = {
+                                    Button(onClick = {
+                                        val entry = selectedEntry!!
+                                        selectedEntry = null
+                                        
+                                        // Check if we are already default
+                                        if (roleManager?.isRoleHeld(android.app.role.RoleManager.ROLE_SMS) == true) {
+                                            viewModel.startRealRestore(entry)
+                                        } else {
+                                            // Request role
+                                            val intent = roleManager?.createRequestRoleIntent(android.app.role.RoleManager.ROLE_SMS)
+                                            if (intent != null) {
+                                                defaultSmsLauncher.launch(intent)
+                                            } else {
+                                                viewModel.setRestoreError("RoleManager is unavailable on this device.")
+                                            }
+                                        }
+                                    }) {
+                                        Text("Real Restore")
+                                    }
+                                },
+                                dismissButton = {
+                                    OutlinedButton(onClick = {
+                                        val entry = selectedEntry!!
+                                        selectedEntry = null
+                                        viewModel.startRestoreDryRun(entry)
+                                    }) {
+                                        Text("Dry-Run Test")
+                                    }
+                                }
+                            )
+                        }
+
                         androidx.compose.foundation.lazy.LazyColumn {
                             items(manifest.entries.size) { index ->
                                 // Reverse order for newest first
@@ -187,7 +254,7 @@ fun DashboardScreen(
                                     headlineContent = { Text(dateStr) },
                                     supportingContent = { Text("${entry.messageCount} messages") },
                                     modifier = Modifier.clickable {
-                                        viewModel.startRestoreDryRun(entry)
+                                        selectedEntry = entry
                                     }
                                 )
                                 HorizontalDivider()

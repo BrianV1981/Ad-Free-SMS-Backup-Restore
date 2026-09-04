@@ -161,6 +161,63 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
     }
+
+    fun setRestoreError(message: String) {
+        _restoreState.value = RestoreState.Error(message)
+    }
+    
+    fun startRealRestore(manifestEntry: com.example.smsbackuprestore.data.model.BackupEntry) {
+        viewModelScope.launch {
+            try {
+                val account = com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(getApplication())
+                if (account == null) {
+                    _restoreState.value = RestoreState.Error("Not signed into Google Drive.")
+                    return@launch
+                }
+                
+                _restoreState.value = RestoreState.Downloading
+                
+                val driveSyncEngine = com.example.smsbackuprestore.data.sync.DriveSyncEngine(getApplication())
+                val destFile = File(getApplication<android.app.Application>().cacheDir, "restore_temp.zip")
+                val downloadSuccess = driveSyncEngine.downloadBackupFromDrive(account, manifestEntry.fileId, destFile)
+                
+                if (!downloadSuccess) {
+                    _restoreState.value = RestoreState.Error("Failed to download backup from Google Drive.")
+                    return@launch
+                }
+                
+                _restoreState.value = RestoreState.Extracting
+                val extractDir = File(getApplication<android.app.Application>().cacheDir, "restore_extracted")
+                if (extractDir.exists()) extractDir.deleteRecursively()
+                extractDir.mkdirs()
+                
+                val prefs = getApplication<android.app.Application>().getSharedPreferences("sms_prefs", android.content.Context.MODE_PRIVATE)
+                val isEncrypted = prefs.getBoolean("encryption_enabled", false)
+                val password = if (isEncrypted) "default_password".toCharArray() else null 
+                
+                val archiver = BackupArchiver()
+                archiver.extractArchive(destFile, extractDir, password)
+                
+                _restoreState.value = RestoreState.Parsing(0, 0)
+                val messagesFile = File(extractDir, "messages.xml")
+                
+                val restoreOrchestrator = com.example.smsbackuprestore.data.archiver.RestoreOrchestrator()
+                val counts = restoreOrchestrator.parseAndRestoreMessages(contentResolver, messagesFile) { sms, mms ->
+                    _restoreState.value = RestoreState.Parsing(sms, mms)
+                }
+                
+                // Clean up
+                destFile.delete()
+                extractDir.deleteRecursively()
+                
+                _restoreState.value = RestoreState.SuccessReal(counts.first, counts.second)
+                
+            } catch (e: Exception) {
+                e.printStackTrace()
+                _restoreState.value = RestoreState.Error(e.localizedMessage ?: "Unknown error during restore")
+            }
+        }
+    }
 }
 
 sealed class RestoreState {
@@ -170,6 +227,7 @@ sealed class RestoreState {
     object Extracting : RestoreState()
     data class Parsing(val smsCount: Int, val mmsCount: Int) : RestoreState()
     data class Success(val smsCount: Int, val mmsCount: Int) : RestoreState()
+    data class SuccessReal(val smsCount: Int, val mmsCount: Int) : RestoreState()
     data class Options(val manifest: com.example.smsbackuprestore.data.model.BackupManifest) : RestoreState()
     data class Error(val message: String) : RestoreState()
 }
