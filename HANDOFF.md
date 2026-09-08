@@ -23,9 +23,9 @@
 This is a native Android 14/15 application built to disrupt legacy SMS backup utilities. The project is strictly 100% Kotlin utilizing Jetpack Compose and Material You. The core monetization strategy relies purely on community goodwill via tipping. No ads, no telemetry.
 
 ### Your Knowledge Base
-- [Project Wiki Index](c:\Users\kingb\Ad-Free SMS Backup & Restore\memory-wiki\index.md)
-- [App Roadmap](c:\Users\kingb\Ad-Free SMS Backup & Restore\docs\sms_app_roadmap.md)
-- [J.O.S.H.U.A. Rules / GEMINI.md](c:\Users\kingb\Ad-Free SMS Backup & Restore\GEMINI.md)
+- [Project Wiki Index](.\memory-wiki\index.md)
+- [App Roadmap](.\docs\sms_app_roadmap.md)
+- [J.O.S.H.U.A. Rules / GEMINI.md](.\GEMINI.md)
 
 ---
 
@@ -68,9 +68,9 @@ The core extraction, serialization, and compression engines are completely built
 ---
 
 ## 6. KEY PATHS
-- **Root Directory:** `c:\Users\kingb\Ad-Free SMS Backup & Restore`
-- **Archiver Logic:** `c:\Users\kingb\Ad-Free SMS Backup & Restore\app\src\main\java\com\example\smsbackuprestore\data\archiver\BackupOrchestrator.kt`
-- **Extraction Logic:** `c:\Users\kingb\Ad-Free SMS Backup & Restore\app\src\main\java\com\example\smsbackuprestore\data\extraction\`
+- **Root Directory:** `.`
+- **Archiver Logic:** `.\app\src\main\java\com\example\smsbackuprestore\data\archiver\BackupOrchestrator.kt`
+- **Extraction Logic:** `.\app\src\main\java\com\example\smsbackuprestore\data\extraction\`
 
 ---
 
