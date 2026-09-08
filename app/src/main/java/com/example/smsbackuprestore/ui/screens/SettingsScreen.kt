@@ -79,6 +79,37 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+
+            // Category: Backup Security
+            item {
+                Text(
+                    text = "Backup Security",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text("AES-256 Encryption") },
+                    supportingContent = { Text("Require a password to open your backup zip file.") },
+                    trailingContent = {
+                        Switch(
+                            checked = encryptionEnabled,
+                            onCheckedChange = { 
+                                if (it) {
+                                    showPasswordDialog = true
+                                } else {
+                                    encryptionEnabled = false
+                                    prefs.edit().putBoolean("encryption_enabled", false).apply()
+                                }
+                            }
+                        )
+                    }
+                )
+            }
+            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+
             // Category: Sovereign Sync (AIM-Connect)
             item {
                 Text(
@@ -152,25 +183,7 @@ fun SettingsScreen(
                     }
                 )
             }
-            item {
-                ListItem(
-                    headlineContent = { Text("AES-256 Encryption") },
-                    supportingContent = { Text("Require a password to open your backup zip file.") },
-                    trailingContent = {
-                        Switch(
-                            checked = encryptionEnabled,
-                            onCheckedChange = { 
-                                if (it) {
-                                    showPasswordDialog = true
-                                } else {
-                                    encryptionEnabled = false
-                                    prefs.edit().putBoolean("encryption_enabled", false).apply()
-                                }
-                            }
-                        )
-                    }
-                )
-            }
+
 
             item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
 
@@ -310,7 +323,7 @@ fun SettingsScreen(
                     headlineContent = { Text("Buy Me a Coffee ☕") },
                     supportingContent = { Text("This app is 100% free and ad-free. If it saved your data, consider dropping a tip!") },
                     modifier = Modifier.clickable {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://buymeacoffee.com/leaddeeds")))
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://buymeacoffee.com/brianv1981")))
                     }
                 )
             }
