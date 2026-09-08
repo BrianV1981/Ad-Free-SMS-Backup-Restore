@@ -143,6 +143,14 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun startRestoreDryRun(manifestEntry: com.example.smsbackuprestore.data.model.BackupEntry) {
+        startRestoreProcess(manifestEntry, isDryRun = true)
+    }
+
+    fun startRealRestore(manifestEntry: com.example.smsbackuprestore.data.model.BackupEntry) {
+        startRestoreProcess(manifestEntry, isDryRun = false)
+    }
+
+    private fun startRestoreProcess(manifestEntry: com.example.smsbackuprestore.data.model.BackupEntry, isDryRun: Boolean) {
         viewModelScope.launch {
             try {
                 val account = com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(getApplication())
@@ -162,95 +170,93 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                     return@launch
                 }
                 
-                _restoreState.value = RestoreState.Extracting
-                val extractDir = File(getApplication<android.app.Application>().cacheDir, "restore_extracted")
-                if (extractDir.exists()) extractDir.deleteRecursively()
-                extractDir.mkdirs()
-                
-                // Get password if encrypted
+                // Get password from prefs if it exists, otherwise null
                 val prefs = getApplication<android.app.Application>().getSharedPreferences("sms_prefs", android.content.Context.MODE_PRIVATE)
-                val isEncrypted = prefs.getBoolean("encryption_enabled", false)
-                val password = if (isEncrypted) prefs.getString("encryption_password", "")?.toCharArray() else null
+                val isEncryptedPref = prefs.getBoolean("encryption_enabled", false)
+                val savedPassword = if (isEncryptedPref) prefs.getString("encryption_password", "")?.toCharArray() else null
                 
-                val archiver = BackupArchiver()
-                archiver.extractArchive(destFile, extractDir, password)
-                
-                _restoreState.value = RestoreState.Parsing(0, 0)
-                val messagesFile = File(extractDir, "messages.xml")
-                
-                val restoreOrchestrator = com.example.smsbackuprestore.data.archiver.RestoreOrchestrator()
-                val counts = restoreOrchestrator.parseMessagesXmlDryRun(messagesFile) { sms, mms ->
-                    _restoreState.value = RestoreState.Parsing(sms, mms)
-                }
-                
-                // Clean up
-                destFile.delete()
-                extractDir.deleteRecursively()
-                
-                _restoreState.value = RestoreState.Success(counts.first, counts.second)
+                executeExtractionAndParsing(manifestEntry, isDryRun, destFile, savedPassword)
                 
             } catch (e: Exception) {
                 e.printStackTrace()
-                _restoreState.value = RestoreState.Error(e.localizedMessage ?: "Unknown error during dry-run")
+                _restoreState.value = RestoreState.Error(e.localizedMessage ?: "Unknown error during restore process")
             }
+        }
+    }
+    
+    fun resumeRestoreWithPassword(manifestEntry: com.example.smsbackuprestore.data.model.BackupEntry, isDryRun: Boolean, password: CharArray) {
+        viewModelScope.launch {
+            val destFile = File(getApplication<android.app.Application>().cacheDir, "restore_temp.zip")
+            if (!destFile.exists()) {
+                _restoreState.value = RestoreState.Error("Downloaded backup file is missing. Please try again.")
+                return@launch
+            }
+            executeExtractionAndParsing(manifestEntry, isDryRun, destFile, password)
+        }
+    }
+    
+    private suspend fun executeExtractionAndParsing(
+        manifestEntry: com.example.smsbackuprestore.data.model.BackupEntry,
+        isDryRun: Boolean,
+        destFile: File,
+        password: CharArray?
+    ) {
+        try {
+            _restoreState.value = RestoreState.Extracting
+            val extractDir = File(getApplication<android.app.Application>().cacheDir, "restore_extracted")
+            if (extractDir.exists()) extractDir.deleteRecursively()
+            extractDir.mkdirs()
+            
+            // Check if ZIP is encrypted using Zip4j before trying to extract blindly
+            val zipFile = net.lingala.zip4j.ZipFile(destFile)
+            if (zipFile.isEncrypted && (password == null || password.isEmpty())) {
+                _restoreState.value = RestoreState.RequirePassword(manifestEntry, isDryRun)
+                return
+            }
+            
+            val archiver = BackupArchiver()
+            archiver.extractArchive(destFile, extractDir, password)
+            
+            _restoreState.value = RestoreState.Parsing(0, 0)
+            val messagesFile = File(extractDir, "messages.xml")
+            val restoreOrchestrator = com.example.smsbackuprestore.data.archiver.RestoreOrchestrator()
+            
+            val counts = if (isDryRun) {
+                restoreOrchestrator.parseMessagesXmlDryRun(messagesFile) { sms, mms ->
+                    _restoreState.value = RestoreState.Parsing(sms, mms)
+                }
+            } else {
+                restoreOrchestrator.parseAndRestoreMessages(contentResolver, messagesFile) { sms, mms ->
+                    _restoreState.value = RestoreState.Parsing(sms, mms)
+                }
+            }
+            
+            // Clean up
+            destFile.delete()
+            extractDir.deleteRecursively()
+            
+            if (isDryRun) {
+                _restoreState.value = RestoreState.Success(counts.first, counts.second)
+            } else {
+                _restoreState.value = RestoreState.SuccessReal(counts.first, counts.second)
+            }
+            
+        } catch (e: net.lingala.zip4j.exception.ZipException) {
+            e.printStackTrace()
+            // If the zip exception is due to a bad password, ask again
+            if (e.message?.contains("password", ignoreCase = true) == true || e.message?.contains("mac", ignoreCase = true) == true) {
+                _restoreState.value = RestoreState.RequirePassword(manifestEntry, isDryRun)
+            } else {
+                _restoreState.value = RestoreState.Error("Corrupt ZIP or extraction failed: ")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            _restoreState.value = RestoreState.Error(e.localizedMessage ?: "Unknown error during extraction")
         }
     }
 
     fun setRestoreError(message: String) {
         _restoreState.value = RestoreState.Error(message)
-    }
-    
-    fun startRealRestore(manifestEntry: com.example.smsbackuprestore.data.model.BackupEntry) {
-        viewModelScope.launch {
-            try {
-                val account = com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(getApplication())
-                if (account == null) {
-                    _restoreState.value = RestoreState.Error("Not signed into Google Drive.")
-                    return@launch
-                }
-                
-                _restoreState.value = RestoreState.Downloading
-                
-                val driveSyncEngine = com.example.smsbackuprestore.data.sync.DriveSyncEngine(getApplication())
-                val destFile = File(getApplication<android.app.Application>().cacheDir, "restore_temp.zip")
-                val downloadSuccess = driveSyncEngine.downloadBackupFromDrive(account, manifestEntry.fileId, destFile)
-                
-                if (!downloadSuccess) {
-                    _restoreState.value = RestoreState.Error("Failed to download backup from Google Drive.")
-                    return@launch
-                }
-                
-                _restoreState.value = RestoreState.Extracting
-                val extractDir = File(getApplication<android.app.Application>().cacheDir, "restore_extracted")
-                if (extractDir.exists()) extractDir.deleteRecursively()
-                extractDir.mkdirs()
-                
-                val prefs = getApplication<android.app.Application>().getSharedPreferences("sms_prefs", android.content.Context.MODE_PRIVATE)
-                val isEncrypted = prefs.getBoolean("encryption_enabled", false)
-                val password = if (isEncrypted) prefs.getString("encryption_password", "")?.toCharArray() else null 
-                
-                val archiver = BackupArchiver()
-                archiver.extractArchive(destFile, extractDir, password)
-                
-                _restoreState.value = RestoreState.Parsing(0, 0)
-                val messagesFile = File(extractDir, "messages.xml")
-                
-                val restoreOrchestrator = com.example.smsbackuprestore.data.archiver.RestoreOrchestrator()
-                val counts = restoreOrchestrator.parseAndRestoreMessages(contentResolver, messagesFile) { sms, mms ->
-                    _restoreState.value = RestoreState.Parsing(sms, mms)
-                }
-                
-                // Clean up
-                destFile.delete()
-                extractDir.deleteRecursively()
-                
-                _restoreState.value = RestoreState.SuccessReal(counts.first, counts.second)
-                
-            } catch (e: Exception) {
-                e.printStackTrace()
-                _restoreState.value = RestoreState.Error(e.localizedMessage ?: "Unknown error during restore")
-            }
-        }
     }
 }
 
@@ -263,5 +269,6 @@ sealed class RestoreState {
     data class Success(val smsCount: Int, val mmsCount: Int) : RestoreState()
     data class SuccessReal(val smsCount: Int, val mmsCount: Int) : RestoreState()
     data class Options(val manifest: com.example.smsbackuprestore.data.model.BackupManifest) : RestoreState()
+    data class RequirePassword(val entry: com.example.smsbackuprestore.data.model.BackupEntry, val isDryRun: Boolean) : RestoreState()
     data class Error(val message: String) : RestoreState()
 }

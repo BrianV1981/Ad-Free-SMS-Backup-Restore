@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -226,6 +227,38 @@ fun DashboardScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text("Decrypting and unzipping archive...")
                     }
+                    is com.example.smsbackuprestore.ui.viewmodel.RestoreState.RequirePassword -> {
+                        val reqState = restoreState as com.example.smsbackuprestore.ui.viewmodel.RestoreState.RequirePassword
+                        var enteredPassword by remember { mutableStateOf("") }
+                        
+                        Icon(imageVector = Icons.Default.Lock, contentDescription = "Encrypted", modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Encrypted Backup", style = MaterialTheme.typography.titleLarge)
+                        Text("This backup was encrypted. Please enter the password you set during backup to unlock it.")
+                        
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = enteredPassword,
+                            onValueChange = { enteredPassword = it },
+                            label = { Text("Password") },
+                            singleLine = true,
+                            visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { viewModel.setRestoreError("Restore Cancelled") }) {
+                                Text("Cancel")
+                            }
+                            Button(onClick = {
+                                if (enteredPassword.isNotBlank()) {
+                                    viewModel.resumeRestoreWithPassword(reqState.entry, reqState.isDryRun, enteredPassword.toCharArray())
+                                }
+                            }) {
+                                Text("Unlock & Continue")
+                            }
+                        }
+                    }
+
                     is com.example.smsbackuprestore.ui.viewmodel.RestoreState.Parsing -> {
                         val parsingState = restoreState as com.example.smsbackuprestore.ui.viewmodel.RestoreState.Parsing
                         CircularProgressIndicator()
