@@ -33,7 +33,7 @@ class AimConnectSyncEngine(private val context: Context) {
 
             val request = Request.Builder()
                 .url(uploadUrl)
-                .header("X-API-Token", token)
+                .header("X-Upload-Secret", token)
                 .post(requestBody)
                 .build()
 
