@@ -79,6 +79,42 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            // Category: Sovereign Sync (AIM-Connect)
+            item {
+                Text(
+                    text = "Sovereign Sync (AIM-Connect)",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text("What is AIM-Connect?") },
+                    supportingContent = { Text("AIM-Connect is an open-source, local terminal multiplexer and backend server. By entering your server URL and Webhook Secret below, this app will bypass Google Drive entirely and pipe your encrypted backups directly to your own self-hosted server for true data sovereignty.") }
+                )
+            }
+            item {
+                var aimConnectUrl by remember { mutableStateOf(prefs.getString("aim_connect_url", "") ?: "") }
+                OutlinedTextField(
+                    value = aimConnectUrl,
+                    onValueChange = { aimConnectUrl = it; prefs.edit().putString("aim_connect_url", it).apply() },
+                    label = { Text("AIM-Connect Server URL") },
+                    placeholder = { Text("e.g. http://192.168.1.100:8000") },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+            item {
+                var aimConnectToken by remember { mutableStateOf(prefs.getString("aim_connect_token", "") ?: "") }
+                OutlinedTextField(
+                    value = aimConnectToken,
+                    onValueChange = { aimConnectToken = it; prefs.edit().putString("aim_connect_token", it).apply() },
+                    label = { Text("Aim-Connect-Webhook-Secret") },
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+            item { HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp)) }
+
             // Category: Cloud & Storage
             item {
                 Text(

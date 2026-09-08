@@ -33,7 +33,7 @@ class AimConnectSyncEngine(private val context: Context) {
 
             val request = Request.Builder()
                 .url(uploadUrl)
-                .header("X-Upload-Secret", token)
+                .header("Aim-Connect-Webhook-Secret", token)
                 .post(requestBody)
                 .build()
 
