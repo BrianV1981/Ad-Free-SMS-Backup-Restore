@@ -79,6 +79,20 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 
                 // Check if Google Drive is enabled (Signed In)
                 val messageCount = extractionRepository.getTotalMessagesCount()
+                
+                // AIM-Connect Sync
+                val aimConnectUrl = prefs.getString("aim_connect_url", "")
+                val aimConnectToken = prefs.getString("aim_connect_token", "")
+                if (!aimConnectUrl.isNullOrBlank() && !aimConnectToken.isNullOrBlank()) {
+                    val aimConnectSyncEngine = com.example.smsbackuprestore.data.sync.AimConnectSyncEngine(getApplication())
+                    val success = aimConnectSyncEngine.uploadBackupToAimConnect(aimConnectUrl, aimConnectToken, backupFile)
+                    if (!success) {
+                        _backupState.value = BackupState.Error("Backup created locally, but AIM-Connect upload failed.")
+                        return@launch
+                    }
+                }
+
+                // Google Drive Sync
                 val account = com.google.android.gms.auth.api.signin.GoogleSignIn.getLastSignedInAccount(getApplication())
                 if (account != null) {
                     val driveSyncEngine = com.example.smsbackuprestore.data.sync.DriveSyncEngine(getApplication())
