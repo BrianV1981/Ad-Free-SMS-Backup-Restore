@@ -198,6 +198,46 @@ fun DashboardScreen(
     
     val restoreState by viewModel.restoreState.collectAsState()
     
+    var showBackupConfirmDialog by remember { mutableStateOf(false) }
+    
+    val roleManager = context.getSystemService(android.content.Context.ROLE_SERVICE) as? android.app.role.RoleManager
+    val defaultSmsLauncherForBackup = rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        // Whether they accepted or denied, we start the backup. 
+        // If they accepted, we get the restricted messages. If denied, we get what we can.
+        viewModel.startBackup(context.cacheDir)
+    }
+    
+    if (showBackupConfirmDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showBackupConfirmDialog = false },
+            title = { Text("Android 14+ Restricted Messages") },
+            text = { Text("To successfully back up restricted messages (like RCS chats, bank codes, or advanced messages), Android requires this app to temporarily become your Default SMS App during the backup.\n\nAfter the backup completes, you will be prompted to switch it back.") },
+            confirmButton = {
+                Button(onClick = {
+                    showBackupConfirmDialog = false
+                    val intent = roleManager?.createRequestRoleIntent(android.app.role.RoleManager.ROLE_SMS)
+                    if (intent != null) {
+                        defaultSmsLauncherForBackup.launch(intent)
+                    } else {
+                        viewModel.startBackup(context.cacheDir)
+                    }
+                }) {
+                    Text("Allow & Backup")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = {
+                    showBackupConfirmDialog = false
+                    viewModel.startBackup(context.cacheDir)
+                }) {
+                    Text("Skip & Backup")
+                }
+            }
+        )
+    }
+    
     if (restoreState !is com.example.smsbackuprestore.ui.viewmodel.RestoreState.Idle) {
         ModalBottomSheet(
             onDismissRequest = { viewModel.resetRestoreState() }
