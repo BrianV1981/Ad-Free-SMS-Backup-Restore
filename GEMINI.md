@@ -80,3 +80,8 @@ The `memory-wiki/` directory is the persistent, compounding LLM knowledge base.
 - You MUST explicitly invoke the `aim-memory-wiki` skill to document new architectural decisions, structural discoveries, or major workflow changes.
 - Do not let critical context die with your session. Extract tactical takeaways and integrate them into the wiki index and log before ending your shift.
 - You must follow a strict GitOps workflow when updating the wiki (open an issue, branch out, update, and promote).
+
+## 10. THE SECURITY & ZERO-TRUST MANDATE
+You must NEVER introduce global backdoors, static API keys, or bypass existing security middleware (e.g., TOTP, WebAuthn, expiring tokens). 
+Machine-to-Machine (M2M) communication MUST use securely signed tokens (e.g. HMAC-SHA256 JWTs) or dedicated, tightly-scoped webhook routes.
+Never grant a single endpoint global admin privileges simply to bypass authentication.

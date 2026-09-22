@@ -104,6 +104,10 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 
                 _backupState.value = BackupState.Success(backupFile, Date(), messageCount)
+                // Clean up temp file
+                if (backupFile.exists()) {
+                    backupFile.delete()
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 _backupState.value = BackupState.Error(e.localizedMessage ?: "Unknown error occurred")
@@ -226,7 +230,7 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
                     _restoreState.value = RestoreState.Parsing(sms, mms)
                 }
             } else {
-                restoreOrchestrator.parseAndRestoreMessages(contentResolver, messagesFile) { sms, mms ->
+                restoreOrchestrator.parseAndRestoreMessages(getApplication<android.app.Application>(), messagesFile) { sms, mms ->
                     _restoreState.value = RestoreState.Parsing(sms, mms)
                 }
             }

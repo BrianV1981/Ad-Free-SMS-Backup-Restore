@@ -50,10 +50,11 @@ class RestoreOrchestrator {
     }
 
     suspend fun parseAndRestoreMessages(
-        contentResolver: android.content.ContentResolver,
+        context: android.content.Context,
         xmlFile: File,
         onProgress: (Int, Int) -> Unit
     ): Pair<Int, Int> = withContext(Dispatchers.IO) {
+        val contentResolver = context.contentResolver
         var smsCount = 0
         var mmsCount = 0
         
@@ -99,6 +100,15 @@ class RestoreOrchestrator {
                                     put(android.provider.Telephony.Sms.TYPE, type)
                                     put(android.provider.Telephony.Sms.BODY, body)
                                     put(android.provider.Telephony.Sms.READ, read)
+                                    
+                                    try {
+                                        if (address.isNotBlank()) {
+                                            val threadId = android.provider.Telephony.Threads.getOrCreateThreadId(context, address)
+                                            put(android.provider.Telephony.Sms.THREAD_ID, threadId)
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
                                 }
                                 try {
                                     contentResolver.insert(android.provider.Telephony.Sms.CONTENT_URI, values)
