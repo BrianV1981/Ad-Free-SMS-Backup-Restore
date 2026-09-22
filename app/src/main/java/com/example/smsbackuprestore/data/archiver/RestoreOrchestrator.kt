@@ -7,16 +7,25 @@ import org.xmlpull.v1.XmlPullParser
 import java.io.File
 import java.io.FileInputStream
 
+data class RestoreResult(
+    var parsedSms: Int = 0,
+    var insertedSms: Int = 0,
+    var skippedSms: Int = 0,
+    var errorSms: Int = 0,
+    var parsedMms: Int = 0,
+    var insertedMms: Int = 0,
+    var lastError: String? = null
+)
+
 class RestoreOrchestrator {
 
     suspend fun parseMessagesXmlDryRun(
         xmlFile: File,
         onProgress: (Int, Int) -> Unit
-    ): Pair<Int, Int> = withContext(Dispatchers.IO) {
-        var smsCount = 0
-        var mmsCount = 0
+    ): RestoreResult = withContext(Dispatchers.IO) {
+        val result = RestoreResult()
         
-        if (!xmlFile.exists()) return@withContext Pair(0, 0)
+        if (!xmlFile.exists()) return@withContext result
         
         FileInputStream(xmlFile).use { inputStream ->
             val parser = Xml.newPullParser()
@@ -28,15 +37,15 @@ class RestoreOrchestrator {
                 if (eventType == XmlPullParser.START_TAG) {
                     when (parser.name) {
                         "sms" -> {
-                            smsCount++
-                            if ((smsCount + mmsCount) % 100 == 0) {
-                                onProgress(smsCount, mmsCount)
+                            result.parsedSms++
+                            if ((result.parsedSms + result.parsedMms) % 100 == 0) {
+                                onProgress(result.parsedSms, result.parsedMms)
                             }
                         }
                         "mms" -> {
-                            mmsCount++
-                            if ((smsCount + mmsCount) % 100 == 0) {
-                                onProgress(smsCount, mmsCount)
+                            result.parsedMms++
+                            if ((result.parsedSms + result.parsedMms) % 100 == 0) {
+                                onProgress(result.parsedSms, result.parsedMms)
                             }
                         }
                     }
@@ -45,20 +54,19 @@ class RestoreOrchestrator {
             }
         }
         
-        onProgress(smsCount, mmsCount)
-        Pair(smsCount, mmsCount)
+        onProgress(result.parsedSms, result.parsedMms)
+        result
     }
 
     suspend fun parseAndRestoreMessages(
         context: android.content.Context,
         xmlFile: File,
         onProgress: (Int, Int) -> Unit
-    ): Pair<Int, Int> = withContext(Dispatchers.IO) {
+    ): RestoreResult = withContext(Dispatchers.IO) {
         val contentResolver = context.contentResolver
-        var smsCount = 0
-        var mmsCount = 0
+        val result = RestoreResult()
         
-        if (!xmlFile.exists()) return@withContext Pair(0, 0)
+        if (!xmlFile.exists()) return@withContext result
 
         // 1. Pre-load existing SMS hashes for duplicate detection
         val existingSmsHashes = hashSetOf<String>()
@@ -69,7 +77,7 @@ class RestoreOrchestrator {
                 while (cursor.moveToNext()) {
                     val address = cursor.getString(addressIndex) ?: ""
                     val date = cursor.getString(dateIndex) ?: ""
-                    existingSmsHashes.add("${address}-${date}")
+                    existingSmsHashes.add("-")
                 }
             }
         } catch (e: Exception) {
@@ -92,7 +100,7 @@ class RestoreOrchestrator {
                             val body = parser.getAttributeValue(null, "body") ?: ""
                             val read = parser.getAttributeValue(null, "read") ?: "1"
                             
-                            val hash = "${address}-${date}"
+                            val hash = "-"
                             if (!existingSmsHashes.contains(hash)) {
                                 val values = android.content.ContentValues().apply {
                                     put(android.provider.Telephony.Sms.ADDRESS, address)
@@ -110,26 +118,37 @@ class RestoreOrchestrator {
                                         e.printStackTrace()
                                     }
                                 }
+                                
                                 try {
-                                    contentResolver.insert(android.provider.Telephony.Sms.CONTENT_URI, values)
-                                    existingSmsHashes.add(hash)
+                                    val uri = contentResolver.insert(android.provider.Telephony.Sms.CONTENT_URI, values)
+                                    if (uri != null) {
+                                        existingSmsHashes.add(hash)
+                                        result.insertedSms++
+                                    } else {
+                                        result.errorSms++
+                                        if (result.lastError == null) result.lastError = "insert() returned null URI"
+                                    }
                                 } catch (e: Exception) {
                                     e.printStackTrace()
+                                    result.errorSms++
+                                    result.lastError = e.localizedMessage ?: e.javaClass.simpleName
                                 }
+                            } else {
+                                result.skippedSms++
                             }
                             
-                            smsCount++
-                            if ((smsCount + mmsCount) % 100 == 0) {
-                                onProgress(smsCount, mmsCount)
+                            result.parsedSms++
+                            if ((result.parsedSms + result.parsedMms) % 100 == 0) {
+                                onProgress(result.parsedSms, result.parsedMms)
                             }
                         }
                         "mms" -> {
-                            mmsCount++
-                            if ((smsCount + mmsCount) % 100 == 0) {
-                                onProgress(smsCount, mmsCount)
+                            result.parsedMms++
+                            if ((result.parsedSms + result.parsedMms) % 100 == 0) {
+                                onProgress(result.parsedSms, result.parsedMms)
                             }
                             // Note: MMS insertion requires multi-table inserts (pdu, addr, part).
-                            // Simplified for this iteration as it requires handling parts separately.
+                            // Currently stubbed for dry-run parsing
                         }
                     }
                 }
@@ -137,7 +156,7 @@ class RestoreOrchestrator {
             }
         }
         
-        onProgress(smsCount, mmsCount)
-        Pair(smsCount, mmsCount)
+        onProgress(result.parsedSms, result.parsedMms)
+        result
     }
 }

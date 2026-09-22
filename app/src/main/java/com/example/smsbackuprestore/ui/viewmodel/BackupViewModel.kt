@@ -240,9 +240,9 @@ class BackupViewModel(application: Application) : AndroidViewModel(application) 
             extractDir.deleteRecursively()
             
             if (isDryRun) {
-                _restoreState.value = RestoreState.Success(counts.first, counts.second)
+                _restoreState.value = RestoreState.Success(counts)
             } else {
-                _restoreState.value = RestoreState.SuccessReal(counts.first, counts.second)
+                _restoreState.value = RestoreState.SuccessReal(counts)
             }
             
         } catch (e: net.lingala.zip4j.exception.ZipException) {
@@ -270,8 +270,8 @@ sealed class RestoreState {
     object Downloading : RestoreState()
     object Extracting : RestoreState()
     data class Parsing(val smsCount: Int, val mmsCount: Int) : RestoreState()
-    data class Success(val smsCount: Int, val mmsCount: Int) : RestoreState()
-    data class SuccessReal(val smsCount: Int, val mmsCount: Int) : RestoreState()
+    data class Success(val result: com.example.smsbackuprestore.data.archiver.RestoreResult) : RestoreState()
+    data class SuccessReal(val result: com.example.smsbackuprestore.data.archiver.RestoreResult) : RestoreState()
     data class Options(val manifest: com.example.smsbackuprestore.data.model.BackupManifest) : RestoreState()
     data class RequirePassword(val entry: com.example.smsbackuprestore.data.model.BackupEntry, val isDryRun: Boolean) : RestoreState()
     data class Error(val message: String) : RestoreState()

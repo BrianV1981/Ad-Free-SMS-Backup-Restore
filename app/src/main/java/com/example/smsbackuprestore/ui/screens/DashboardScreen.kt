@@ -270,7 +270,7 @@ fun DashboardScreen(
                         Icon(imageVector = Icons.Default.Check, contentDescription = "Success", modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.height(16.dp))
                         Text("Dry Run Complete!", style = MaterialTheme.typography.titleLarge)
-                        Text("Successfully parsed ${successState.smsCount} SMS and ${successState.mmsCount} MMS messages.")
+                        Text("Successfully parsed  SMS and  MMS messages.")
                         Text("0 messages were actually written to your device.", color = MaterialTheme.colorScheme.secondary)
                     }
                     is com.example.smsbackuprestore.ui.viewmodel.RestoreState.SuccessReal -> {
@@ -278,7 +278,13 @@ fun DashboardScreen(
                         Icon(imageVector = Icons.Default.Check, contentDescription = "Success", modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.height(16.dp))
                         Text("Restore Complete!", style = MaterialTheme.typography.titleLarge)
-                        Text("Successfully restored ${successState.smsCount} SMS and ${successState.mmsCount} MMS messages.")
+                        Text("Parsed:  SMS")
+Text("Inserted:  SMS", color = androidx.compose.ui.graphics.Color(0xFF4CAF50))
+Text("Skipped (Duplicates):  SMS")
+if (successState.result.errorSms > 0) {
+Text("Errors:  SMS", color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+Text("Last Error: ", color = androidx.compose.material3.MaterialTheme.colorScheme.error, style = androidx.compose.material3.MaterialTheme.typography.bodySmall)
+}
                         
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = {
